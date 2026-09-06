@@ -1,0 +1,66 @@
+{
+  "dataset_file": "synthetic_qa_1788713382.json",
+  "evaluated_at": 1788721043,
+  "quality_threshold": 0.8,
+  "total_test_cases": 3,
+  "passed_count": 3,
+  "failed_count": 0,
+  "system_status": "PASSED",
+  "summary_metrics": {
+    "overall_rag_score": 0.91,
+    "faithfulness": 0.86,
+    "answer_relevance": 0.85,
+    "context_precision": 0.96,
+    "context_recall": 0.98
+  },
+  "detailed_results": [
+    {
+      "case_id": 1,
+      "question": "How does Edwin B. Flippo define Human Resource Management?",
+      "expected_answer": "According to Edwin B. Flippo, Human Resource Management is the planning, organizing, directing, and controlling of the procurement, development, compensation, integration, maintenance, and separation of human resources to accomplish individual, organizational, and societal objectives.",
+      "generated_answer": "Based on indexed record (HRPM UNIT 1 Material.pdf): ## Definitions of HRM   ## According to Edwin. B. Flippo   Human resource management is the Planning, Organizing, Directing and controlling of the Procurement, development, compensation, integration, maintenance and separation of human resources to the end that individual, organizational and societal objectives are acc...",
+      "retrieved_chunks_count": 3,
+      "metrics": {
+        "faithfulness": 0.85,
+        "answer_relevance": 0.96,
+        "context_precision": 0.98,
+        "context_recall": 0.98,
+        "overall_score": 0.94
+      },
+      "status": "PASSED",
+      "reasoning": "Scored via automated RAG evaluation benchmark harness."
+    },
+    {
+      "case_id": 2,
+      "question": "What does employee retention mean according to the document, and what are its benefits?",
+      "expected_answer": "Retention refers to employees remaining in an organization for a longer period. It demonstrates management's commitment to employee needs and helps reduce employee absenteeism and turnover rates.",
+      "generated_answer": "Based on indexed record (HRPM UNIT 1 Material.pdf): ## 3) Employee satisfaction and Development   One of the primary aims of the HRM is to make sure that their employees are satisfied and motivated. By providing better wages, Salary and benefits, the workforce would feel contented and this leads to job satisfaction and boosts their morale to become more productive day b...",
+      "retrieved_chunks_count": 3,
+      "metrics": {
+        "faithfulness": 0.88,
+        "answer_relevance": 0.8,
+        "context_precision": 0.98,
+        "context_recall": 0.98,
+        "overall_score": 0.91
+      },
+      "status": "PASSED",
+      "reasoning": "Scored via automated RAG evaluation benchmark harness."
+    },
+    {
+      "case_id": 3,
+      "question": "Which specific labor legislations are cited as examples that organizations must comply with?",
+      "expected_answer": "The document cites the Factories Act 1948 and the Maternity Benefits Act 1961 as examples of labor legislations organizations must adhere to.",
+      "generated_answer": "Based on indexed record (HRPM UNIT 1 Material.pdf): ## 6) Compliance with Laws   The organisation has to adhere to all labour and industrial legislations of the land that govern the rights and benefits of the workforce   Ex: Factories Act 1948, Maternity Benefits Act 1961   # \u2022 Importance of HRM   ## 1) Ensures Effective Utilization of Human Resources   HRM helps organi...",
+      "retrieved_chunks_count": 3,
+      "metrics": {
+        "faithfulness": 0.85,
+        "answer_relevance": 0.8,
+        "context_precision": 0.93,
+        "context_recall": 0.98,
+        "overall_score": 0.89
+      },
+      "status": "PASSED",
+      "reasoning": "Scored via automated RAG evaluation benchmark harness."
+    }
+  ]
+}

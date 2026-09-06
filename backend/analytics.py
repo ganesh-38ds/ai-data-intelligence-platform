@@ -7,6 +7,29 @@ from google import genai
 
 load_dotenv()
 
+def sanitize_value(val):
+    """Ensures values are JSON-serializable and converts NaN/Inf/None to 0.0/safe values."""
+    if isinstance(val, (int, np.integer)):
+        return int(val)
+    elif isinstance(val, (float, np.floating)):
+        if np.isnan(val) or np.isinf(val):
+            return 0.0
+        return float(val)
+    elif pd.isna(val):
+        return 0.0
+    elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
+        return str(val)
+    return val
+
+def sanitize_dict_or_list(obj):
+    """Recursively traverses dictionaries and lists to eliminate un-serializable NaNs and Infs."""
+    if isinstance(obj, dict):
+        return {str(k): sanitize_dict_or_list(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_dict_or_list(item) for item in obj]
+    else:
+        return sanitize_value(obj)
+
 def generate_smart_statistical_insights(df):
     """
     Lightning-fast, zero-latency automated data science insights engine.
@@ -14,6 +37,9 @@ def generate_smart_statistical_insights(df):
     Never fails, never hits rate limits.
     """
     insights = []
+    if df.empty:
+        return ["Dataset is empty."]
+
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     cat_cols = df.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
 
@@ -30,10 +56,10 @@ def generate_smart_statistical_insights(df):
     # 2. Key Numerical Distributions & Extremes
     if numeric_cols:
         main_num = numeric_cols[0]
-        mean_val = df[main_num].mean()
-        max_val = df[main_num].max()
-        min_val = df[main_num].min()
-        std_val = df[main_num].std()
+        mean_val = float(df[main_num].mean()) if pd.notna(df[main_num].mean()) else 0.0
+        max_val = float(df[main_num].max()) if pd.notna(df[main_num].max()) else 0.0
+        min_val = float(df[main_num].min()) if pd.notna(df[main_num].min()) else 0.0
+        std_val = float(df[main_num].std()) if pd.notna(df[main_num].std()) else 0.0
         
         # Check for skewness / concentration
         if max_val > (mean_val * 2.5) and mean_val > 0:
@@ -44,23 +70,27 @@ def generate_smart_statistical_insights(df):
     # 3. Categorical Leader / Concentration
     if cat_cols:
         main_cat = cat_cols[0]
-        top_val = df[main_cat].mode().iloc[0] if not df[main_cat].empty else "Unknown"
-        top_count = int(df[main_cat].value_counts().iloc[0]) if not df[main_cat].empty else 0
-        top_pct = round((top_count / max(1, len(df))) * 100, 1)
-        insights.append(f"Dominant segment in '{main_cat}' is '{top_val}' accounting for {top_pct}% of total records ({top_count:,} occurrences).")
+        top_series = df[main_cat].dropna().value_counts()
+        if not top_series.empty:
+            top_val = str(top_series.index[0])
+            top_count = int(top_series.iloc[0])
+            top_pct = round((top_count / max(1, len(df))) * 100, 1)
+            insights.append(f"Dominant segment in '{main_cat}' is '{top_val}' accounting for {top_pct}% of total records ({top_count:,} occurrences).")
     elif len(numeric_cols) > 1:
         sec_num = numeric_cols[1]
-        insights.append(f"Secondary numerical feature '{sec_num}' recorded an aggregate sum of {df[sec_num].sum():,.2f}.")
+        sum_val = float(df[sec_num].sum()) if pd.notna(df[sec_num].sum()) else 0.0
+        insights.append(f"Secondary numerical feature '{sec_num}' recorded an aggregate sum of {sum_val:,.2f}.")
 
     return insights[:3]
 
 def get_advanced_analytics(df):
-    """Calculates summary statistics and extracts chart preview data."""
+    """Calculates summary statistics and extracts chart preview data safely without NaN crashes."""
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     
     summary = {}
     if numeric_cols:
-        summary = df[numeric_cols].describe().round(2).to_dict()
+        raw_summary = df[numeric_cols].describe().round(2).to_dict()
+        summary = sanitize_dict_or_list(raw_summary)
         
     chart_data = []
     if numeric_cols:
@@ -68,14 +98,20 @@ def get_advanced_analytics(df):
         cat_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
         label_col = cat_cols[0] if cat_cols else df.index.name or 'Index'
         
-        # Sample first 10 rows for clean bar visualization
-        sample_df = df.head(10).fillna("Unknown")
+        # Cleanly fill categoricals with 'Unknown' and numerics with 0.0
+        sample_df = df.head(10).copy()
+        if cat_cols:
+            sample_df[cat_cols] = sample_df[cat_cols].fillna("Unknown")
+        sample_df[numeric_cols] = sample_df[numeric_cols].fillna(0.0)
+
         for i, row in sample_df.iterrows():
             label = str(row[label_col]) if cat_cols else f"Row {i}"
             # Shorten labels if too long
             if len(label) > 15:
                 label = label[:12] + "..."
-            chart_data.append({"name": label, val_col: row[val_col]})
+            raw_val = row[val_col]
+            clean_val = sanitize_value(raw_val)
+            chart_data.append({"name": label, val_col: clean_val})
 
     return summary, chart_data
 

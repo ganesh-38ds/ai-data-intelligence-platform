@@ -10,6 +10,50 @@ PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed
 EVAL_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "evaluation")
 os.makedirs(EVAL_DIR, exist_ok=True)
 
+def extract_fallback_test_cases(markdown_text, target_filename, num_questions=3):
+    """
+    Extracts grounded Q&A test cases directly from document structure
+    if external LLM API experiences rate limits or network issues.
+    """
+    lines = [line.strip() for line in markdown_text.split("\n") if line.strip()]
+    test_cases = []
+    
+    sections = []
+    current_title = "Document Overview"
+    current_body = []
+    
+    for line in lines:
+        if line.startswith("#"):
+            if current_body:
+                sections.append((current_title, " ".join(current_body)))
+                current_body = []
+            current_title = line.lstrip("#").strip()
+        else:
+            if len(line) > 25:
+                current_body.append(line)
+                
+    if current_body:
+        sections.append((current_title, " ".join(current_body)))
+        
+    for title, body in sections[:num_questions]:
+        if len(body) > 30:
+            test_cases.append({
+                "question": f"What does the document state regarding {title}?",
+                "context": body[:350],
+                "expected_answer": body[:200].rstrip(".") + "."
+            })
+            
+    while len(test_cases) < num_questions:
+        idx = len(test_cases) + 1
+        excerpt = markdown_text[:250].replace("\n", " ").strip()
+        test_cases.append({
+            "question": f"What key information is highlighted in Section {idx} of {target_filename}?",
+            "context": excerpt,
+            "expected_answer": excerpt[:150].rstrip(".") + "."
+        })
+        
+    return test_cases[:num_questions]
+
 def generate_synthetic_dataset(filename=None, num_questions=3):
     """
     Generates synthetic evaluation test cases from processed document markdown.
@@ -19,13 +63,11 @@ def generate_synthetic_dataset(filename=None, num_questions=3):
       - expected_answer
     """
     api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY is not set in .env")
 
     # Find a markdown file to generate from
     available_files = [f for f in os.listdir(PROCESSED_DIR) if f.endswith(".md")]
     if not available_files:
-        raise ValueError("No processed document found in data/processed/. Please upload a PDF first.")
+        raise ValueError("No processed document found in data/processed/. Please upload a PDF or CSV first.")
 
     target_file = filename if filename and filename in available_files else available_files[0]
     file_path = os.path.join(PROCESSED_DIR, target_file)
@@ -33,12 +75,26 @@ def generate_synthetic_dataset(filename=None, num_questions=3):
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Take first ~4500 characters to keep prompt compact and representative
-    sample_context = content[:4500]
+    # Stratified Multi-Region Sampling across entire document (beginning, middle, end)
+    if len(content) > 6000:
+        mid_start = len(content) // 2
+        sample_context = (
+            content[:2000] 
+            + "\n\n[... Middle Section Excerpt ...]\n\n" 
+            + content[mid_start:mid_start+1500] 
+            + "\n\n[... Concluding Section Excerpt ...]\n\n" 
+            + content[-1200:]
+        )
+    else:
+        sample_context = content[:4500]
 
-    client = genai.Client(api_key=api_key)
+    test_cases = None
 
-    prompt = f"""
+    if api_key and api_key != "paste_your_key_here_without_quotes":
+        try:
+            client = genai.Client(api_key=api_key)
+
+            prompt = f"""
 You are an AI benchmark engineer building an evaluation dataset for a RAG system.
 Based on the following document excerpt, generate EXACTLY {num_questions} distinct question-answer test cases.
 
@@ -54,21 +110,29 @@ RULES:
 3. Do not include markdown code fence formatting (like ```json), return raw JSON only.
 """
 
-    response = client.models.generate_content(
-        model='gemini-3.6-flash',
-        contents=prompt
-    )
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=prompt
+            )
 
-    raw_text = response.text.strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    elif raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-    raw_text = raw_text.strip()
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            elif raw_text.startswith("```"):
+                raw_text = raw_text[3:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+            raw_text = raw_text.strip()
 
-    test_cases = json.loads(raw_text)
+            parsed = json.loads(raw_text)
+            if isinstance(parsed, list) and len(parsed) > 0:
+                test_cases = parsed[:num_questions]
+        except Exception as e:
+            print(f"Notice: Synthetic QA generation fallback triggered: {e}")
+
+    # If API quota is exhausted or unconfigured, smoothly generate structured benchmark
+    if not test_cases:
+        test_cases = extract_fallback_test_cases(content, target_file, num_questions)
 
     # Save to data/evaluation
     timestamp = int(time.time())

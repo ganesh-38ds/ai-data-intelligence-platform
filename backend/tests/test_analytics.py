@@ -52,3 +52,20 @@ def test_missing_and_duplicate_detection():
     
     assert total_missing == 1
     assert total_duplicates == 1
+
+def test_nan_and_infinity_sanitization():
+    """Verify that NaNs and Infs are converted to safe serializable numbers."""
+    df = pd.DataFrame({
+        "Metric": [10.0, np.nan, np.inf, -np.inf],
+        "Label": ["A", "B", "C", "D"]
+    })
+    
+    summary, chart_data = analytics.get_advanced_analytics(df)
+    assert "Metric" in summary
+    assert isinstance(summary["Metric"]["mean"], float)
+    
+    for item in chart_data:
+        val = item["Metric"]
+        assert isinstance(val, (int, float))
+        assert not np.isnan(val)
+        assert not np.isinf(val)

@@ -28,5 +28,7 @@ def test_rag_query_retrieval():
     assert "question" in result
     assert "retrieved_chunks" in result
     assert "generated_answer" in result
+    assert "latency_ms" in result
+    assert result["latency_ms"] >= 0
     assert len(result["retrieved_chunks"]) > 0
     assert any("Supervised" in c["text"] or "Learning" in c["text"] for c in result["retrieved_chunks"])

@@ -34,9 +34,24 @@ def index_document(markdown_text, filename):
     collection.upsert(documents=documents, metadatas=metadatas, ids=ids)
     return len(chunks)
 
+import time
+
 def query_rag(question):
-    # 1. RETRIEVAL from ChromaDB
-    results = collection.query(query_texts=[question], n_results=3)
+    start_time = time.time()
+    
+    # 0. Check if collection is empty
+    total_docs = collection.count()
+    if total_docs == 0:
+        return {
+            "question": question,
+            "retrieved_chunks": [],
+            "generated_answer": "No documents have been indexed into the vector database yet. Please upload a PDF, CSV, or Excel file in the Data Ingestion tab first.",
+            "latency_ms": 0
+        }
+
+    # 1. RETRIEVAL from ChromaDB with dynamic result boundary
+    query_limit = min(3, total_docs)
+    results = collection.query(query_texts=[question], n_results=query_limit)
     
     retrieved_chunks = []
     context_text = ""
@@ -60,9 +75,10 @@ def query_rag(question):
             client = genai.Client(api_key=api_key)
             
             prompt = f"""
-You are a concise, helpful RAG intelligence assistant.
+You are a concise, highly accurate RAG intelligence assistant.
 Use ONLY the following retrieved context to answer the user's question accurately in 2 or 3 clear sentences.
 If the answer is not in the context, clearly state that the provided documents do not contain that information.
+Be completely objective and factual based solely on the provided CONTEXT.
 
 CONTEXT:
 {context_text}
@@ -92,8 +108,11 @@ QUESTION:
         else:
             final_answer = "No matching context found."
         
+    latency_ms = int((time.time() - start_time) * 1000)
+
     return {
         "question": question,
         "retrieved_chunks": retrieved_chunks,
-        "generated_answer": final_answer
+        "generated_answer": final_answer,
+        "latency_ms": latency_ms
     }

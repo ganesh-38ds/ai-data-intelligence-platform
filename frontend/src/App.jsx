@@ -6,8 +6,8 @@ import {
 import { 
   BarChart3, Search, Sparkles, UploadCloud, FileSpreadsheet, 
   FileText, CheckCircle2, AlertCircle, Database, Bot, ArrowRight,
-  Layers, RefreshCw, BookOpen, HelpCircle, CheckCheck, ShieldCheck,
-  Target, Award, CheckSquare, XCircle, ChevronRight, Activity
+  Layers, RefreshCw, BookOpen, CheckCheck, ShieldCheck,
+  Target, Award, XCircle, Activity, Play
 } from 'lucide-react'
 import './App.css'
 
@@ -43,15 +43,14 @@ function App() {
   const [pytestResult, setPytestResult] = useState(null)
   const [isRunningPytest, setIsRunningPytest] = useState(false)
 
-  // Load datasets and evaluation runs on tab switches
-  useEffect(() => {
-    if (activeTab === "synthetic" || activeTab === "evaluation") {
-      fetchSavedDatasets()
+  const loadSpecificRun = async (filename) => {
+    try {
+      const res = await axios.get(`http://localhost:8000/api/evaluation/run/${filename}`)
+      setEvaluationReport(res.data)
+    } catch (err) {
+      console.error("Failed to load run:", err)
     }
-    if (activeTab === "evaluation") {
-      fetchEvalRuns()
-    }
-  }, [activeTab])
+  }
 
   const fetchSavedDatasets = async () => {
     try {
@@ -70,7 +69,6 @@ function App() {
       const res = await axios.get("http://localhost:8000/api/evaluation/runs")
       setEvalRuns(res.data)
       if (res.data.length > 0 && !evaluationReport) {
-        // Automatically load the latest evaluation run report
         loadSpecificRun(res.data[0].filename)
       }
     } catch (err) {
@@ -78,14 +76,47 @@ function App() {
     }
   }
 
-  const loadSpecificRun = async (filename) => {
-    try {
-      const res = await axios.get(`http://localhost:8000/api/evaluation/run/${filename}`)
-      setEvaluationReport(res.data)
-    } catch (err) {
-      console.error("Failed to load run:", err)
+  const handleTabSelect = (tab) => {
+    setActiveTab(tab)
+    if (tab === "synthetic" || tab === "evaluation") {
+      fetchSavedDatasets()
+    }
+    if (tab === "evaluation") {
+      fetchEvalRuns()
     }
   }
+
+  // Initial asynchronous load on dashboard mount
+  useEffect(() => {
+    let mounted = true
+    const initData = async () => {
+      try {
+        const [datasetRes, evalRes] = await Promise.all([
+          axios.get("http://localhost:8000/api/dataset/list"),
+          axios.get("http://localhost:8000/api/evaluation/runs")
+        ])
+        if (mounted) {
+          setSavedDatasets(datasetRes.data)
+          if (datasetRes.data.length > 0) {
+            setSelectedEvalDataset(datasetRes.data[0].filename)
+          }
+          setEvalRuns(evalRes.data)
+          if (evalRes.data.length > 0) {
+            const runRes = await axios.get(`http://localhost:8000/api/evaluation/run/${evalRes.data[0].filename}`)
+            if (mounted) {
+              setEvaluationReport(runRes.data)
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Dashboard initialization error:", err)
+      }
+    }
+    initData()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0]
@@ -207,25 +238,25 @@ function App() {
       {/* Modern Navigation Tabs */}
       <div className="tab-nav">
         <button 
-          onClick={() => setActiveTab("upload")}
+          onClick={() => handleTabSelect("upload")}
           className={`tab-btn ${activeTab === "upload" ? "active" : ""}`}>
           <BarChart3 size={16} />
           <span>Data Ingestion</span>
         </button>
         <button 
-          onClick={() => setActiveTab("rag")}
+          onClick={() => handleTabSelect("rag")}
           className={`tab-btn ${activeTab === "rag" ? "active" : ""}`}>
           <Search size={16} />
           <span>RAG Pipeline</span>
         </button>
         <button 
-          onClick={() => setActiveTab("synthetic")}
+          onClick={() => handleTabSelect("synthetic")}
           className={`tab-btn ${activeTab === "synthetic" ? "active" : ""}`}>
           <Database size={16} />
           <span>Synthetic Benchmark</span>
         </button>
         <button 
-          onClick={() => setActiveTab("evaluation")}
+          onClick={() => handleTabSelect("evaluation")}
           className={`tab-btn ${activeTab === "evaluation" ? "active" : ""}`}>
           <Award size={16} />
           <span>Evaluation Dashboard</span>
@@ -478,6 +509,20 @@ function App() {
                   <h4 style={{ color: "#c7d2fe", fontSize: "1rem", fontWeight: 700 }}>
                     Synthesized Grounded Answer (Gemini 3.6 Flash)
                   </h4>
+                  {ragResponse.latency_ms !== undefined && (
+                    <span style={{
+                      marginLeft: "auto",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#a5b4fc",
+                      background: "rgba(99, 102, 241, 0.2)",
+                      padding: "2px 10px",
+                      borderRadius: "9999px",
+                      border: "1px solid rgba(99, 102, 241, 0.35)"
+                    }}>
+                      ⚡ {ragResponse.latency_ms} ms
+                    </span>
+                  )}
                 </div>
                 <p style={{ color: "#f8fafc", fontSize: "15px", lineHeight: 1.65 }}>
                   {ragResponse.generated_answer}
@@ -829,12 +874,12 @@ function App() {
                       color: pytestResult.status === "PASSED" ? "#34d399" : "#f87171",
                       border: pytestResult.status === "PASSED" ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(239, 68, 68, 0.4)"
                     }}>
-                      {pytestResult.status} (10/10 TESTS PASSED)
+                      {pytestResult.status} (11/11 TESTS PASSED)
                     </span>
                   )}
                 </div>
                 <p style={{ color: "#94a3b8", fontSize: "13px", margin: 0 }}>
-                  Executes 10 automated unit & regression tests across analytics, file ingestion, vector search, and RAG quality thresholds.
+                  Executes 11 automated unit & regression tests across analytics, file ingestion, vector search, NaN sanitization, and RAG quality thresholds.
                 </p>
               </div>
 
