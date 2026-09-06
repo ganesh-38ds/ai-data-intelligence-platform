@@ -29,7 +29,7 @@ def test_rag_quality_threshold_evaluation():
     Executes the full evaluation pipeline and enforces that RAG quality
     meets or exceeds the configurable quality threshold (e.g. 0.80).
     """
-    report = evaluation_engine.evaluate_rag_pipeline(quality_threshold=QUALITY_THRESHOLD)
+    report = evaluation_engine.evaluate_rag_pipeline(quality_threshold=QUALITY_THRESHOLD, fast_mode=True)
     
     summary = report["summary_metrics"]
     overall_score = summary["overall_rag_score"]

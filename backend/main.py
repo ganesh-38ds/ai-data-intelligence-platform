@@ -39,6 +39,7 @@ class GenerateDatasetRequest(BaseModel):
 class RunEvaluationRequest(BaseModel):
     dataset_filename: str = None
     quality_threshold: float = 0.80
+    fast_mode: bool = False
 
 @app.get("/")
 def read_root():
@@ -179,7 +180,8 @@ def run_evaluation(request: RunEvaluationRequest):
     try:
         report = evaluation_engine.evaluate_rag_pipeline(
             dataset_filename=request.dataset_filename,
-            quality_threshold=request.quality_threshold
+            quality_threshold=request.quality_threshold,
+            fast_mode=request.fast_mode
         )
         return report
     except Exception as e:

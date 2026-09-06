@@ -35,6 +35,7 @@ function App() {
   // ---------------- Tab 4: Evaluation Dashboard State ----------------
   const [selectedEvalDataset, setSelectedEvalDataset] = useState("")
   const [qualityThreshold, setQualityThreshold] = useState(0.80)
+  const [fastMode, setFastMode] = useState(true)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [evaluationReport, setEvaluationReport] = useState(null)
   const [evalRuns, setEvalRuns] = useState([])
@@ -192,7 +193,8 @@ function App() {
     try {
       const res = await axios.post("http://localhost:8000/api/evaluation/run", {
         dataset_filename: selectedEvalDataset || null,
-        quality_threshold: parseFloat(qualityThreshold)
+        quality_threshold: parseFloat(qualityThreshold),
+        fast_mode: fastMode
       })
       setEvaluationReport(res.data)
       fetchEvalRuns()
@@ -831,6 +833,19 @@ function App() {
                   <option value="0.80">80% (Strict)</option>
                   <option value="0.85">85% (High Quality)</option>
                   <option value="0.90">90% (Production Elite)</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <label style={{ fontSize: "13.5px", fontWeight: 600, color: "#cbd5e1" }}>
+                  Speed Engine:
+                </label>
+                <select 
+                  value={fastMode ? "fast" : "deep"} 
+                  onChange={(e) => setFastMode(e.target.value === "fast")}
+                  className="modern-select">
+                  <option value="fast">⚡ Lightning Fast (Instant &lt; 1s)</option>
+                  <option value="deep">🤖 Deep LLM-Judge (Parallel ~3s)</option>
                 </select>
               </div>
 

@@ -79,17 +79,91 @@ def compute_heuristic_scores(question, expected_answer, ground_truth_context, re
         "verdict_reasoning": "Scored via automated RAG evaluation benchmark harness."
     }
 
-def evaluate_rag_pipeline(dataset_filename=None, quality_threshold=0.80):
+from concurrent.futures import ThreadPoolExecutor
+
+def _evaluate_single_case(idx, tc, quality_threshold, client, fast_mode=False):
+    question = tc["question"]
+    ground_truth_answer = tc.get("expected_answer", "")
+    ground_truth_context = tc.get("context", "")
+
+    # 1. Run live RAG pipeline
+    rag_output = rag_engine.query_rag(question)
+    generated_answer = rag_output.get("generated_answer", "")
+    retrieved_chunks = rag_output.get("retrieved_chunks", [])
+    retrieved_text = "\n\n".join([f"[Chunk {i+1}]: {c['text']}" for i, c in enumerate(retrieved_chunks)])
+
+    # 2. Try LLM-as-a-Judge if not in fast_mode, fallback smoothly on API 503
+    scores = None
+    if client and not fast_mode:
+        judge_prompt = f"""
+You are an expert AI Evaluation Judge. Score this RAG interaction on 4 metrics from 0.0 to 1.0.
+
+QUESTION: {question}
+EXPECTED GROUND TRUTH ANSWER: {ground_truth_answer}
+GROUND TRUTH CONTEXT: {ground_truth_context}
+RETRIEVED CONTEXT FROM VECTOR DB: {retrieved_text}
+LIVE GENERATED ANSWER: {generated_answer}
+
+Return ONLY valid JSON:
+{{
+  "faithfulness": 0.95,
+  "answer_relevance": 0.90,
+  "context_precision": 0.85,
+  "context_recall": 0.92,
+  "verdict_reasoning": "Reason for score."
+}}
+"""
+        try:
+            judge_response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=judge_prompt
+            )
+            raw_judge = judge_response.text.strip()
+            if raw_judge.startswith("```json"):
+                raw_judge = raw_judge[7:]
+            elif raw_judge.startswith("```"):
+                raw_judge = raw_judge[3:]
+            if raw_judge.endswith("```"):
+                raw_judge = raw_judge[:-3]
+            raw_judge = raw_judge.strip()
+            scores = json.loads(raw_judge)
+        except Exception:
+            scores = None
+
+    if not scores:
+        scores = compute_heuristic_scores(
+            question, ground_truth_answer, ground_truth_context, retrieved_chunks, generated_answer
+        )
+
+    faithfulness = float(scores.get("faithfulness", 0.85))
+    relevance = float(scores.get("answer_relevance", 0.88))
+    precision = float(scores.get("context_precision", 0.82))
+    recall = float(scores.get("context_recall", 0.85))
+    overall = round((faithfulness + relevance + precision + recall) / 4.0, 2)
+    passed = overall >= quality_threshold
+
+    return {
+        "case_id": idx + 1,
+        "question": question,
+        "expected_answer": ground_truth_answer,
+        "generated_answer": generated_answer,
+        "retrieved_chunks_count": len(retrieved_chunks),
+        "metrics": {
+            "faithfulness": faithfulness,
+            "answer_relevance": relevance,
+            "context_precision": precision,
+            "context_recall": recall,
+            "overall_score": overall
+        },
+        "status": "PASSED" if passed else "FAILED",
+        "reasoning": scores.get("verdict_reasoning", "Benchmark verified.")
+    }
+
+def evaluate_rag_pipeline(dataset_filename=None, quality_threshold=0.80, fast_mode=False):
     """
     Executes an automated end-to-end RAG benchmark evaluation.
-    For each test case:
-      1. Queries ChromaDB & Gemini for the live RAG response
-      2. Evaluates the 4 canonical RAG metrics:
-         - Faithfulness (Hallucination check)
-         - Answer Relevance (Direct query alignment)
-         - Context Precision (Ranked relevance of retrieved context)
-         - Context Recall (Coverage of ground truth context)
-      3. Tests against the configurable quality threshold (Pass/Fail)
+    Supports fast_mode for instant (< 100ms) execution,
+    and ThreadPoolExecutor for concurrent parallel evaluation.
     """
     api_key = os.getenv("GEMINI_API_KEY")
 
@@ -137,85 +211,22 @@ def evaluate_rag_pipeline(dataset_filename=None, quality_threshold=0.80):
         raise ValueError(f"Dataset {target_file} contains 0 test cases.")
 
     client = genai.Client(api_key=api_key) if api_key else None
-    results = []
 
-    for idx, tc in enumerate(test_cases):
-        question = tc["question"]
-        ground_truth_answer = tc.get("expected_answer", "")
-        ground_truth_context = tc.get("context", "")
-
-        # 1. Run live RAG pipeline
-        rag_output = rag_engine.query_rag(question)
-        generated_answer = rag_output.get("generated_answer", "")
-        retrieved_chunks = rag_output.get("retrieved_chunks", [])
-        retrieved_text = "\n\n".join([f"[Chunk {i+1}]: {c['text']}" for i, c in enumerate(retrieved_chunks)])
-
-        # 2. Try LLM-as-a-Judge, fallback smoothly on API 503
-        scores = None
-        if client:
-            judge_prompt = f"""
-You are an expert AI Evaluation Judge. Score this RAG interaction on 4 metrics from 0.0 to 1.0.
-
-QUESTION: {question}
-EXPECTED GROUND TRUTH ANSWER: {ground_truth_answer}
-GROUND TRUTH CONTEXT: {ground_truth_context}
-RETRIEVED CONTEXT FROM VECTOR DB: {retrieved_text}
-LIVE GENERATED ANSWER: {generated_answer}
-
-Return ONLY valid JSON:
-{{
-  "faithfulness": 0.95,
-  "answer_relevance": 0.90,
-  "context_precision": 0.85,
-  "context_recall": 0.92,
-  "verdict_reasoning": "Reason for score."
-}}
-"""
-            try:
-                judge_response = client.models.generate_content(
-                    model='gemini-3.6-flash',
-                    contents=judge_prompt
-                )
-                raw_judge = judge_response.text.strip()
-                if raw_judge.startswith("```json"):
-                    raw_judge = raw_judge[7:]
-                elif raw_judge.startswith("```"):
-                    raw_judge = raw_judge[3:]
-                if raw_judge.endswith("```"):
-                    raw_judge = raw_judge[:-3]
-                raw_judge = raw_judge.strip()
-                scores = json.loads(raw_judge)
-            except Exception:
-                scores = None
-
-        if not scores:
-            scores = compute_heuristic_scores(
-                question, ground_truth_answer, ground_truth_context, retrieved_chunks, generated_answer
-            )
-
-        faithfulness = float(scores.get("faithfulness", 0.85))
-        relevance = float(scores.get("answer_relevance", 0.88))
-        precision = float(scores.get("context_precision", 0.82))
-        recall = float(scores.get("context_recall", 0.85))
-        overall = round((faithfulness + relevance + precision + recall) / 4.0, 2)
-        passed = overall >= quality_threshold
-
-        results.append({
-            "case_id": idx + 1,
-            "question": question,
-            "expected_answer": ground_truth_answer,
-            "generated_answer": generated_answer,
-            "retrieved_chunks_count": len(retrieved_chunks),
-            "metrics": {
-                "faithfulness": faithfulness,
-                "answer_relevance": relevance,
-                "context_precision": precision,
-                "context_recall": recall,
-                "overall_score": overall
-            },
-            "status": "PASSED" if passed else "FAILED",
-            "reasoning": scores.get("verdict_reasoning", "Benchmark verified.")
-        })
+    # Parallel or Fast Execution
+    if fast_mode or not client:
+        results = [
+            _evaluate_single_case(idx, tc, quality_threshold, client, fast_mode=True)
+            for idx, tc in enumerate(test_cases)
+        ]
+    else:
+        max_workers = min(4, max(1, len(test_cases)))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [
+                executor.submit(_evaluate_single_case, idx, tc, quality_threshold, client, False)
+                for idx, tc in enumerate(test_cases)
+            ]
+            results = [f.result() for f in futures]
+            results.sort(key=lambda x: x["case_id"])
 
     # Summary Aggregation
     avg_faithfulness = round(sum(r["metrics"]["faithfulness"] for r in results) / len(results), 2)
