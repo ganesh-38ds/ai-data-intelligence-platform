@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+.pytest_cache/
+
+# Environment variables (SECURITY)
+.env
+*.env
+
+# Node.js
+frontend/node_modules/
+frontend/dist/
+frontend/.eslintcache
+
+# ChromaDB binary data
+data/chroma_db/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/

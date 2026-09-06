@@ -1,0 +1,66 @@
+{
+  "dataset_file": "synthetic_qa_1788713382.json",
+  "evaluated_at": 1788716165,
+  "quality_threshold": 0.8,
+  "total_test_cases": 3,
+  "passed_count": 3,
+  "failed_count": 0,
+  "system_status": "PASSED",
+  "summary_metrics": {
+    "overall_rag_score": 0.99,
+    "faithfulness": 1.0,
+    "answer_relevance": 1.0,
+    "context_precision": 0.96,
+    "context_recall": 1.0
+  },
+  "detailed_results": [
+    {
+      "case_id": 1,
+      "question": "How does Edwin B. Flippo define Human Resource Management?",
+      "expected_answer": "According to Edwin B. Flippo, Human Resource Management is the planning, organizing, directing, and controlling of the procurement, development, compensation, integration, maintenance, and separation of human resources to accomplish individual, organizational, and societal objectives.",
+      "generated_answer": "According to Edwin B. Flippo, Human Resource Management is the planning, organizing, directing, and controlling of the procurement, development, compensation, integration, maintenance, and separation of human resources. This process is carried out to ensure that individual, organizational, and societal objectives are ultimately accomplished.",
+      "retrieved_chunks_count": 3,
+      "metrics": {
+        "faithfulness": 1.0,
+        "answer_relevance": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "overall_score": 1.0
+      },
+      "status": "PASSED",
+      "reasoning": "The generated answer perfectly captures Edwin B. Flippo's definition of Human Resource Management as provided in the context. Faithfulness and Answer Relevance are 1.0 as the response is fully accurate, directly answers the prompt, and contains no hallucinations. Context Recall is 1.0 because all information from the ground truth answer is present in the context. Context Precision is 1.0 because the relevant chunk containing the exact definition is ranked first (Chunk 1)."
+    },
+    {
+      "case_id": 2,
+      "question": "What does employee retention mean according to the document, and what are its benefits?",
+      "expected_answer": "Retention refers to employees remaining in an organization for a longer period. It demonstrates management's commitment to employee needs and helps reduce employee absenteeism and turnover rates.",
+      "generated_answer": "According to the document, retention means employees staying in an organization for a longer period of time. Its benefits include demonstrating management's commitment to employee needs and wants, which ultimately helps reduce employee absenteeism and turnover rates.",
+      "retrieved_chunks_count": 3,
+      "metrics": {
+        "faithfulness": 1.0,
+        "answer_relevance": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "overall_score": 1.0
+      },
+      "status": "PASSED",
+      "reasoning": "The retrieved context contains all necessary information in the first chunk, resulting in perfect recall and precision at rank 1. The generated answer accurately addresses all parts of the question, perfectly matching the ground truth while remaining completely faithful to the retrieved context."
+    },
+    {
+      "case_id": 3,
+      "question": "Which specific labor legislations are cited as examples that organizations must comply with?",
+      "expected_answer": "The document cites the Factories Act 1948 and the Maternity Benefits Act 1961 as examples of labor legislations organizations must adhere to.",
+      "generated_answer": "The specific labor legislations cited as examples that organizations must comply with include the Factories Act 1948 and the Maternity Benefits Act 1961. Additionally, the context mentions compliance with the Minimum Wages Act, 1948 and the POSH Act.",
+      "retrieved_chunks_count": 3,
+      "metrics": {
+        "faithfulness": 1.0,
+        "answer_relevance": 1.0,
+        "context_precision": 0.89,
+        "context_recall": 1.0,
+        "overall_score": 0.97
+      },
+      "status": "PASSED",
+      "reasoning": "The generated answer is fully faithful to the retrieved context, accurately incorporating information from both Chunk 1 and Chunk 2 without hallucination. The answer directly and completely answers the prompt. Context recall is perfect as Chunk 1 contains the exact ground truth text. Context precision is high as the most relevant chunk is ranked first, though Chunk 3 contains unnecessary details about harassment guidelines."
+    }
+  ]
+}

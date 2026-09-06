@@ -1,0 +1,201 @@
+Order Date,Region,City,Category,Segment,Product,Order ID,Customer ID,Sales,Quantity
+2023-01-15,West,Los Angeles,Technology,Consumer,Laptop Pro,ORD-001,CUST-07,1250.50,2
+2023-01-22,East,New York,Furniture,Corporate,Executive Chair,ORD-002,CUST-23,450.00,1
+2023-02-03,Central,Chicago,Office Supplies,Home Office,Printer Paper,ORD-003,CUST-45,89.99,5
+2023-02-14,South,Atlanta,Technology,Consumer,Wireless Mouse,ORD-004,CUST-12,35.50,3
+2023-02-28,West,San Francisco,Furniture,Corporate,Standing Desk,ORD-005,CUST-67,899.00,1
+2023-03-05,East,Boston,Office Supplies,Consumer,Stapler Set,ORD-006,CUST-34,22.75,2
+2023-03-11,Central,Dallas,Technology,Corporate,Monitor 27in,ORD-007,CUST-89,549.99,1
+2023-03-19,South,Nashville,Furniture,Home Office,Bookshelf,ORD-008,CUST-56,199.00,2
+2023-04-02,West,Seattle,Office Supplies,Consumer,Sticky Notes,ORD-009,CUST-11,15.25,10
+2023-04-08,East,Philadelphia,Technology,Corporate,USB-C Hub,ORD-010,CUST-78,79.99,4
+2023-04-15,Central,Houston,Furniture,Consumer,Filing Cabinet,ORD-011,CUST-33,320.00,1
+2023-04-22,South,Charlotte,Technology,Home Office,Webcam HD,ORD-012,CUST-90,129.50,2
+2023-05-01,West,Phoenix,Office Supplies,Corporate,Pens Box,ORD-013,CUST-55,18.00,6
+2023-05-10,East,Miami,Furniture,Consumer,Meeting Table,ORD-014,CUST-22,1200.00,1
+2023-05-18,Central,Minneapolis,Technology,Consumer,Laptop Pro,ORD-015,CUST-44,1350.00,1
+2023-05-25,South,New Orleans,Office Supplies,Corporate,Whiteboard Markers,ORD-016,CUST-66,12.50,8
+2023-06-03,West,Los Angeles,Furniture,Home Office,Executive Chair,ORD-017,CUST-77,480.00,1
+2023-06-09,East,New York,Technology,Consumer,Wireless Mouse,ORD-018,CUST-88,42.00,5
+2023-06-17,Central,Chicago,Office Supplies,Consumer,Printer Paper,ORD-019,CUST-99,95.00,4
+2023-06-24,South,Atlanta,Furniture,Corporate,Standing Desk,ORD-020,CUST-10,950.00,1
+2023-07-04,West,San Francisco,Technology,Corporate,Monitor 27in,ORD-021,CUST-21,599.00,2
+2023-07-11,East,Boston,Office Supplies,Home Office,Stapler Set,ORD-022,CUST-32,25.00,3
+2023-07-19,Central,Dallas,Furniture,Consumer,Bookshelf,ORD-023,CUST-43,210.00,1
+2023-07-26,South,Nashville,Technology,Consumer,USB-C Hub,ORD-024,CUST-54,85.00,2
+2023-08-02,West,Seattle,Office Supplies,Corporate,Sticky Notes,ORD-025,CUST-65,17.50,12
+2023-08-09,East,Philadelphia,Technology,Home Office,Webcam HD,ORD-026,CUST-76,139.00,1
+2023-08-16,Central,Houston,Furniture,Corporate,Filing Cabinet,ORD-027,CUST-87,350.00,2
+2023-08-23,South,Charlotte,Office Supplies,Consumer,Pens Box,ORD-028,CUST-98,20.00,5
+2023-09-01,West,Phoenix,Furniture,Home Office,Meeting Table,ORD-029,CUST-09,1100.00,1
+2023-09-08,East,Miami,Technology,Corporate,Laptop Pro,ORD-030,CUST-20,1499.00,1
+2023-09-15,Central,Minneapolis,Office Supplies,Consumer,Whiteboard Markers,ORD-031,CUST-31,14.00,7
+2023-09-22,South,New Orleans,Furniture,Corporate,Executive Chair,ORD-032,CUST-42,520.00,2
+2023-10-01,West,Los Angeles,Technology,Consumer,Wireless Mouse,ORD-033,CUST-53,38.00,4
+2023-10-08,East,New York,Office Supplies,Home Office,Printer Paper,ORD-034,CUST-64,100.00,3
+2023-10-15,Central,Chicago,Furniture,Consumer,Standing Desk,ORD-035,CUST-75,1000.00,1
+2023-10-22,South,Atlanta,Technology,Corporate,Monitor 27in,ORD-036,CUST-86,650.00,1
+2023-11-01,West,San Francisco,Office Supplies,Consumer,Stapler Set,ORD-037,CUST-97,28.00,2
+2023-11-08,East,Boston,Furniture,Corporate,Bookshelf,ORD-038,CUST-08,225.00,3
+2023-11-15,Central,Dallas,Technology,Home Office,USB-C Hub,ORD-039,CUST-19,92.00,1
+2023-11-22,South,Nashville,Office Supplies,Consumer,Sticky Notes,ORD-040,CUST-30,19.00,9
+2023-12-01,West,Seattle,Technology,Corporate,Webcam HD,ORD-041,CUST-41,145.00,2
+2023-12-08,East,Philadelphia,Furniture,Home Office,Filing Cabinet,ORD-042,CUST-52,380.00,1
+2023-12-15,Central,Houston,Office Supplies,Corporate,Pens Box,ORD-043,CUST-63,22.00,4
+2023-12-22,South,Charlotte,Furniture,Consumer,Meeting Table,ORD-044,CUST-74,1300.00,1
+2023-01-05,West,Phoenix,Technology,Home Office,Laptop Pro,ORD-045,CUST-85,1199.00,1
+2023-01-18,East,Miami,Office Supplies,Corporate,Whiteboard Markers,ORD-046,CUST-96,16.00,6
+2023-02-07,Central,Minneapolis,Furniture,Consumer,Executive Chair,ORD-047,CUST-07,460.00,1
+2023-02-19,South,New Orleans,Technology,Consumer,Wireless Mouse,ORD-048,CUST-18,40.00,3
+2023-03-08,West,Los Angeles,Office Supplies,Home Office,Printer Paper,ORD-049,CUST-29,88.00,5
+2023-03-21,East,New York,Furniture,Corporate,Standing Desk,ORD-050,CUST-40,980.00,1
+2023-04-05,Central,Chicago,Technology,Consumer,Monitor 27in,ORD-051,CUST-51,575.00,1
+2023-04-18,South,Atlanta,Office Supplies,Corporate,Stapler Set,ORD-052,CUST-62,24.00,2
+2023-05-03,West,San Francisco,Furniture,Home Office,Bookshelf,ORD-053,CUST-73,195.00,2
+2023-05-16,East,Boston,Technology,Consumer,USB-C Hub,ORD-054,CUST-84,77.00,3
+2023-06-01,Central,Dallas,Office Supplies,Consumer,Sticky Notes,ORD-055,CUST-95,16.00,8
+2023-06-14,South,Nashville,Technology,Corporate,Webcam HD,ORD-056,CUST-06,135.00,2
+2023-07-03,West,Seattle,Furniture,Consumer,Filing Cabinet,ORD-057,CUST-17,340.00,1
+2023-07-16,East,Philadelphia,Office Supplies,Home Office,Pens Box,ORD-058,CUST-28,19.50,5
+2023-08-04,Central,Houston,Furniture,Corporate,Meeting Table,ORD-059,CUST-39,1250.00,1
+2023-08-17,South,Charlotte,Technology,Consumer,Laptop Pro,ORD-060,CUST-50,1299.00,1
+2023-09-05,West,Phoenix,Office Supplies,Corporate,Whiteboard Markers,ORD-061,CUST-61,13.00,10
+2023-09-18,East,Miami,Furniture,Home Office,Executive Chair,ORD-062,CUST-72,500.00,1
+2023-10-07,Central,Minneapolis,Technology,Consumer,Wireless Mouse,ORD-063,CUST-83,36.00,6
+2023-10-20,South,New Orleans,Office Supplies,Consumer,Printer Paper,ORD-064,CUST-94,92.00,4
+2023-11-05,West,Los Angeles,Furniture,Corporate,Standing Desk,ORD-065,CUST-05,920.00,1
+2023-11-18,East,New York,Technology,Home Office,Monitor 27in,ORD-066,CUST-16,560.00,2
+2023-12-07,Central,Chicago,Office Supplies,Consumer,Stapler Set,ORD-067,CUST-27,26.00,3
+2023-12-20,South,Atlanta,Furniture,Corporate,Bookshelf,ORD-068,CUST-38,220.00,1
+2023-01-09,West,San Francisco,Technology,Consumer,USB-C Hub,ORD-069,CUST-49,82.00,2
+2023-01-25,East,Boston,Office Supplies,Home Office,Sticky Notes,ORD-070,CUST-60,18.00,7
+2023-02-11,Central,Dallas,Technology,Corporate,Webcam HD,ORD-071,CUST-71,142.00,1
+2023-02-24,South,Nashville,Furniture,Consumer,Filing Cabinet,ORD-072,CUST-82,360.00,2
+2023-03-13,West,Seattle,Office Supplies,Corporate,Pens Box,ORD-073,CUST-93,21.00,4
+2023-03-26,East,Philadelphia,Furniture,Home Office,Meeting Table,ORD-074,CUST-04,1150.00,1
+2023-04-10,Central,Houston,Technology,Consumer,Laptop Pro,ORD-075,CUST-15,1320.00,1
+2023-04-23,South,Charlotte,Office Supplies,Consumer,Whiteboard Markers,ORD-076,CUST-26,15.00,5
+2023-05-08,West,Phoenix,Furniture,Corporate,Executive Chair,ORD-077,CUST-37,490.00,2
+2023-05-21,East,Miami,Technology,Consumer,Wireless Mouse,ORD-078,CUST-48,44.00,3
+2023-06-06,Central,Minneapolis,Office Supplies,Home Office,Printer Paper,ORD-079,CUST-59,96.00,4
+2023-06-19,South,New Orleans,Furniture,Consumer,Standing Desk,ORD-080,CUST-70,870.00,1
+2023-07-08,West,Los Angeles,Technology,Corporate,Monitor 27in,ORD-081,CUST-81,610.00,1
+2023-07-21,East,New York,Office Supplies,Consumer,Stapler Set,ORD-082,CUST-92,23.00,2
+2023-08-09,Central,Chicago,Furniture,Corporate,Bookshelf,ORD-083,CUST-03,205.00,3
+2023-08-22,South,Atlanta,Technology,Home Office,USB-C Hub,ORD-084,CUST-14,88.00,1
+2023-09-10,West,San Francisco,Office Supplies,Consumer,Sticky Notes,ORD-085,CUST-25,14.50,11
+2023-09-23,East,Boston,Technology,Corporate,Webcam HD,ORD-086,CUST-36,148.00,2
+2023-10-12,Central,Dallas,Furniture,Consumer,Filing Cabinet,ORD-087,CUST-47,330.00,1
+2023-10-25,South,Nashville,Office Supplies,Home Office,Pens Box,ORD-088,CUST-58,20.50,6
+2023-11-13,West,Seattle,Furniture,Corporate,Meeting Table,ORD-089,CUST-69,1350.00,1
+2023-11-26,East,Philadelphia,Technology,Consumer,Laptop Pro,ORD-090,CUST-80,1180.00,1
+2023-12-14,Central,Houston,Office Supplies,Corporate,Whiteboard Markers,ORD-091,CUST-91,11.00,9
+2023-12-27,South,Charlotte,Furniture,Home Office,Executive Chair,ORD-092,CUST-02,510.00,1
+2023-01-12,West,Phoenix,Technology,Consumer,Wireless Mouse,ORD-093,CUST-13,39.00,4
+2023-01-28,East,Miami,Office Supplies,Corporate,Printer Paper,ORD-094,CUST-24,91.00,3
+2023-02-15,Central,Minneapolis,Furniture,Consumer,Standing Desk,ORD-095,CUST-35,940.00,1
+2023-02-27,South,New Orleans,Technology,Corporate,Monitor 27in,ORD-096,CUST-46,580.00,2
+2023-03-16,West,Los Angeles,Office Supplies,Home Office,Stapler Set,ORD-097,CUST-57,27.00,2
+2023-03-29,East,New York,Furniture,Consumer,Bookshelf,ORD-098,CUST-68,215.00,1
+2023-04-13,Central,Chicago,Technology,Consumer,USB-C Hub,ORD-099,CUST-79,81.00,3
+2023-04-26,South,Atlanta,Office Supplies,Corporate,Sticky Notes,ORD-100,CUST-90,17.00,8
+2023-05-14,West,San Francisco,Technology,Home Office,Webcam HD,ORD-101,CUST-01,132.00,1
+2023-05-27,East,Boston,Furniture,Corporate,Filing Cabinet,ORD-102,CUST-12,370.00,2
+2023-06-12,Central,Dallas,Office Supplies,Consumer,Pens Box,ORD-103,CUST-23,21.50,5
+2023-06-25,South,Nashville,Furniture,Home Office,Meeting Table,ORD-104,CUST-34,1180.00,1
+2023-07-13,West,Seattle,Technology,Consumer,Laptop Pro,ORD-105,CUST-45,1275.00,1
+2023-07-26,East,Philadelphia,Office Supplies,Corporate,Whiteboard Markers,ORD-106,CUST-56,14.50,6
+2023-08-14,Central,Houston,Furniture,Consumer,Executive Chair,ORD-107,CUST-67,470.00,1
+2023-08-27,South,Charlotte,Technology,Consumer,Wireless Mouse,ORD-108,CUST-78,37.50,5
+2023-09-15,West,Phoenix,Office Supplies,Home Office,Printer Paper,ORD-109,CUST-89,93.00,4
+2023-09-28,East,Miami,Furniture,Corporate,Standing Desk,ORD-110,CUST-100,960.00,1
+2023-10-17,Central,Minneapolis,Technology,Corporate,Monitor 27in,ORD-111,CUST-11,590.00,1
+2023-10-30,South,New Orleans,Office Supplies,Consumer,Stapler Set,ORD-112,CUST-22,24.50,3
+2023-11-17,West,Los Angeles,Furniture,Home Office,Bookshelf,ORD-113,CUST-33,208.00,2
+2023-11-30,East,New York,Technology,Consumer,USB-C Hub,ORD-114,CUST-44,84.00,2
+2023-12-18,Central,Chicago,Office Supplies,Corporate,Sticky Notes,ORD-115,CUST-55,16.50,10
+2023-01-06,South,Atlanta,Technology,Home Office,Webcam HD,ORD-116,CUST-66,136.00,1
+2023-01-19,West,San Francisco,Furniture,Consumer,Filing Cabinet,ORD-117,CUST-77,345.00,1
+2023-02-06,East,Boston,Office Supplies,Corporate,Pens Box,ORD-118,CUST-88,22.50,4
+2023-02-20,Central,Dallas,Furniture,Home Office,Meeting Table,ORD-119,CUST-99,1220.00,1
+2023-03-07,South,Nashville,Technology,Consumer,Laptop Pro,ORD-120,CUST-10,1310.00,1
+2023-03-20,West,Seattle,Office Supplies,Consumer,Whiteboard Markers,ORD-121,CUST-21,13.50,7
+2023-04-04,East,Philadelphia,Furniture,Corporate,Executive Chair,ORD-122,CUST-32,505.00,2
+2023-04-17,Central,Houston,Technology,Consumer,Wireless Mouse,ORD-123,CUST-43,41.00,4
+2023-05-06,South,Charlotte,Office Supplies,Home Office,Printer Paper,ORD-124,CUST-54,87.00,5
+2023-05-19,West,Phoenix,Furniture,Corporate,Standing Desk,ORD-125,CUST-65,915.00,1
+2023-06-07,East,Miami,Technology,Consumer,Monitor 27in,ORD-126,CUST-76,565.00,1
+2023-06-20,Central,Minneapolis,Office Supplies,Corporate,Stapler Set,ORD-127,CUST-87,25.50,2
+2023-07-09,South,New Orleans,Furniture,Consumer,Bookshelf,ORD-128,CUST-98,212.00,3
+2023-07-22,West,Los Angeles,Technology,Home Office,USB-C Hub,ORD-129,CUST-09,86.00,1
+2023-08-10,East,New York,Office Supplies,Consumer,Sticky Notes,ORD-130,CUST-20,15.75,9
+2023-08-23,Central,Chicago,Technology,Corporate,Webcam HD,ORD-131,CUST-31,144.00,2
+2023-09-11,South,Atlanta,Furniture,Consumer,Filing Cabinet,ORD-132,CUST-42,355.00,1
+2023-09-24,West,San Francisco,Office Supplies,Home Office,Pens Box,ORD-133,CUST-53,20.00,6
+2023-10-13,East,Boston,Furniture,Corporate,Meeting Table,ORD-134,CUST-64,1280.00,1
+2023-10-26,Central,Dallas,Technology,Consumer,Laptop Pro,ORD-135,CUST-75,1240.00,1
+2023-11-14,South,Nashville,Office Supplies,Corporate,Whiteboard Markers,ORD-136,CUST-86,12.00,8
+2023-11-27,West,Seattle,Furniture,Home Office,Executive Chair,ORD-137,CUST-97,495.00,1
+2023-12-16,East,Philadelphia,Technology,Consumer,Wireless Mouse,ORD-138,CUST-08,43.50,3
+2023-12-29,Central,Houston,Office Supplies,Consumer,Printer Paper,ORD-139,CUST-19,94.00,4
+2023-01-14,South,Charlotte,Furniture,Corporate,Standing Desk,ORD-140,CUST-30,970.00,1
+2023-01-27,West,Phoenix,Technology,Consumer,Monitor 27in,ORD-141,CUST-41,555.00,2
+2023-02-13,East,Miami,Office Supplies,Home Office,Stapler Set,ORD-142,CUST-52,26.50,2
+2023-02-26,Central,Minneapolis,Furniture,Consumer,Bookshelf,ORD-143,CUST-63,218.00,1
+2023-03-14,South,New Orleans,Technology,Corporate,USB-C Hub,ORD-144,CUST-74,90.00,2
+2023-03-27,West,Los Angeles,Office Supplies,Consumer,Sticky Notes,ORD-145,CUST-85,16.25,11
+2023-04-11,East,New York,Technology,Home Office,Webcam HD,ORD-146,CUST-96,140.00,1
+2023-04-24,Central,Chicago,Furniture,Corporate,Filing Cabinet,ORD-147,CUST-07,365.00,2
+2023-05-12,South,Atlanta,Office Supplies,Consumer,Pens Box,ORD-148,CUST-18,21.00,5
+2023-05-25,West,San Francisco,Furniture,Home Office,Meeting Table,ORD-149,CUST-29,1160.00,1
+2023-06-13,East,Boston,Technology,Consumer,Laptop Pro,ORD-150,CUST-40,1285.00,1
+2023-06-26,Central,Dallas,Office Supplies,Corporate,Whiteboard Markers,ORD-151,CUST-51,13.75,6
+2023-07-14,South,Nashville,Furniture,Consumer,Executive Chair,ORD-152,CUST-62,475.00,1
+2023-07-27,West,Seattle,Technology,Consumer,Wireless Mouse,ORD-153,CUST-73,38.50,4
+2023-08-15,East,Philadelphia,Office Supplies,Home Office,Printer Paper,ORD-154,CUST-84,90.00,5
+2023-08-28,Central,Houston,Furniture,Corporate,Standing Desk,ORD-155,CUST-95,990.00,1
+2023-09-16,South,Charlotte,Technology,Consumer,Monitor 27in,ORD-156,CUST-06,570.00,1
+2023-09-29,West,Phoenix,Office Supplies,Corporate,Stapler Set,ORD-157,CUST-17,27.50,3
+2023-10-18,East,Miami,Furniture,Home Office,Bookshelf,ORD-158,CUST-28,222.00,2
+2023-10-31,Central,Minneapolis,Technology,Consumer,USB-C Hub,ORD-159,CUST-39,83.00,3
+2023-11-19,South,New Orleans,Office Supplies,Consumer,Sticky Notes,ORD-160,CUST-50,17.25,8
+2023-12-08,West,Los Angeles,Technology,Corporate,Webcam HD,ORD-161,CUST-61,147.00,2
+2023-12-21,East,New York,Furniture,Consumer,Filing Cabinet,ORD-162,CUST-72,375.00,1
+2023-01-08,Central,Chicago,Office Supplies,Home Office,Pens Box,ORD-163,CUST-83,23.00,4
+2023-01-21,South,Atlanta,Furniture,Corporate,Meeting Table,ORD-164,CUST-94,1270.00,1
+2023-02-09,West,San Francisco,Technology,Consumer,Laptop Pro,ORD-165,CUST-05,1260.00,1
+2023-02-22,East,Boston,Office Supplies,Consumer,Whiteboard Markers,ORD-166,CUST-16,14.25,7
+2023-03-10,Central,Dallas,Furniture,Corporate,Executive Chair,ORD-167,CUST-27,515.00,1
+2023-03-23,South,Nashville,Technology,Consumer,Wireless Mouse,ORD-168,CUST-38,45.00,3
+2023-04-08,West,Seattle,Office Supplies,Home Office,Printer Paper,ORD-169,CUST-49,86.00,4
+2023-04-21,East,Philadelphia,Furniture,Consumer,Standing Desk,ORD-170,CUST-60,930.00,1
+2023-05-09,Central,Houston,Technology,Corporate,Monitor 27in,ORD-171,CUST-71,595.00,2
+2023-05-22,South,Charlotte,Office Supplies,Consumer,Stapler Set,ORD-172,CUST-82,24.00,2
+2023-06-10,West,Phoenix,Furniture,Home Office,Bookshelf,ORD-173,CUST-93,202.00,3
+2023-06-23,East,Miami,Technology,Consumer,USB-C Hub,ORD-174,CUST-04,80.00,2
+2023-07-11,Central,Minneapolis,Office Supplies,Corporate,Sticky Notes,ORD-175,CUST-15,15.50,10
+2023-07-24,South,New Orleans,Technology,Home Office,Webcam HD,ORD-176,CUST-26,138.00,1
+2023-08-12,West,Los Angeles,Furniture,Corporate,Filing Cabinet,ORD-177,CUST-37,360.00,1
+2023-08-25,East,New York,Office Supplies,Consumer,Pens Box,ORD-178,CUST-48,22.00,5
+2023-09-13,Central,Chicago,Furniture,Home Office,Meeting Table,ORD-179,CUST-59,1190.00,1
+2023-09-26,South,Atlanta,Technology,Consumer,Laptop Pro,ORD-180,CUST-70,1230.00,1
+2023-10-14,West,San Francisco,Office Supplies,Corporate,Whiteboard Markers,ORD-181,CUST-81,12.75,9
+2023-10-27,East,Boston,Furniture,Consumer,Executive Chair,ORD-182,CUST-92,485.00,2
+2023-11-15,Central,Dallas,Technology,Consumer,Wireless Mouse,ORD-183,CUST-03,40.50,4
+2023-11-28,South,Nashville,Office Supplies,Home Office,Printer Paper,ORD-184,CUST-14,89.00,5
+2023-12-17,West,Seattle,Furniture,Corporate,Standing Desk,ORD-185,CUST-25,945.00,1
+2023-12-30,East,Philadelphia,Technology,Consumer,Monitor 27in,ORD-186,CUST-36,560.00,1
+2023-01-16,Central,Houston,Office Supplies,Corporate,Stapler Set,ORD-187,CUST-47,28.00,2
+2023-01-29,South,Charlotte,Furniture,Home Office,Bookshelf,ORD-188,CUST-58,226.00,1
+2023-02-17,West,Phoenix,Technology,Consumer,USB-C Hub,ORD-189,CUST-69,87.00,3
+2023-03-01,East,Miami,Office Supplies,Consumer,Sticky Notes,ORD-190,CUST-80,18.50,7
+2023-03-15,Central,Minneapolis,Technology,Corporate,Webcam HD,ORD-191,CUST-91,143.00,2
+2023-04-01,South,New Orleans,Furniture,Consumer,Filing Cabinet,ORD-192,CUST-02,350.00,1
+2023-04-14,West,Los Angeles,Office Supplies,Home Office,Pens Box,ORD-193,CUST-13,19.00,6
+2023-05-02,East,New York,Furniture,Corporate,Meeting Table,ORD-194,CUST-24,1210.00,1
+2023-05-15,Central,Chicago,Technology,Consumer,Laptop Pro,ORD-195,CUST-35,1330.00,1
+2023-05-28,South,Atlanta,Office Supplies,Consumer,Whiteboard Markers,ORD-196,CUST-46,11.50,8
+2023-06-15,West,San Francisco,Furniture,Corporate,Executive Chair,ORD-197,CUST-57,530.00,1
+2023-07-01,East,Boston,Technology,Consumer,Wireless Mouse,ORD-198,CUST-68,46.00,3
+2023-08-01,Central,Dallas,Office Supplies,Home Office,Printer Paper,ORD-199,CUST-79,97.00,4
+2023-09-01,South,Nashville,Furniture,Consumer,Standing Desk,ORD-200,CUST-90,880.00,1
