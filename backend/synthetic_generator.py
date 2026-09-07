@@ -92,6 +92,7 @@ def generate_synthetic_dataset(filename=None, num_questions=3):
 
     if api_key and api_key != "paste_your_key_here_without_quotes":
         try:
+            from google.genai import types
             client = genai.Client(api_key=api_key)
 
             prompt = f"""
@@ -109,24 +110,33 @@ RULES:
 2. Return ONLY valid JSON as a list of objects with keys: "question", "context", "expected_answer".
 3. Do not include markdown code fence formatting (like ```json), return raw JSON only.
 """
+            candidate_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash"]
+            raw_text = ""
+            for m in candidate_models:
+                try:
+                    response = client.models.generate_content(
+                        model=m,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(temperature=0.0)
+                    )
+                    if response and response.text:
+                        raw_text = response.text.strip()
+                        break
+                except Exception:
+                    continue
 
-            response = client.models.generate_content(
-                model='gemini-3.6-flash',
-                contents=prompt
-            )
+            if raw_text:
+                if raw_text.startswith("```json"):
+                    raw_text = raw_text[7:]
+                elif raw_text.startswith("```"):
+                    raw_text = raw_text[3:]
+                if raw_text.endswith("```"):
+                    raw_text = raw_text[:-3]
+                raw_text = raw_text.strip()
 
-            raw_text = response.text.strip()
-            if raw_text.startswith("```json"):
-                raw_text = raw_text[7:]
-            elif raw_text.startswith("```"):
-                raw_text = raw_text[3:]
-            if raw_text.endswith("```"):
-                raw_text = raw_text[:-3]
-            raw_text = raw_text.strip()
-
-            parsed = json.loads(raw_text)
-            if isinstance(parsed, list) and len(parsed) > 0:
-                test_cases = parsed[:num_questions]
+                parsed = json.loads(raw_text)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    test_cases = parsed[:num_questions]
         except Exception as e:
             print(f"Notice: Synthetic QA generation fallback triggered: {e}")
 

@@ -11,9 +11,23 @@ import {
 } from 'lucide-react'
 import './App.css'
 
+const API_BASE = "http://localhost:8000"
+
+const getErrorMessage = (error) => {
+  if (!error) return "Unknown error"
+  if (error.message === "Network Error" || !error.response) {
+    return "Cannot connect to local backend server at http://localhost:8000. Please ensure FastAPI is running via .venv\\Scripts\\python.exe -m uvicorn main:app --port 8000."
+  }
+  return error.response?.data?.detail || error.message
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState("upload") // "upload" | "rag" | "synthetic" | "evaluation"
   
+  // ---------------- Backend Connection & Speed State ----------------
+  const [backendConnected, setBackendConnected] = useState(null)
+  const [uploadLatency, setUploadLatency] = useState(null)
+
   // ---------------- Tab 1: Upload & Analytics State ----------------
   const [file, setFile] = useState(null)
   const [uploadStatus, setUploadStatus] = useState("")
@@ -44,10 +58,26 @@ function App() {
   const [pytestResult, setPytestResult] = useState(null)
   const [isRunningPytest, setIsRunningPytest] = useState(false)
 
+  const checkBackendStatus = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/status`, { timeout: 3000 })
+      if (res.status === 200) {
+        setBackendConnected(true)
+        fetchSavedDatasets()
+        fetchEvalRuns()
+        return true
+      }
+    } catch {
+      setBackendConnected(false)
+      return false
+    }
+  }
+
   const loadSpecificRun = async (filename) => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/evaluation/run/${filename}`)
+      const res = await axios.get(`${API_BASE}/api/evaluation/run/${filename}`)
       setEvaluationReport(res.data)
+      setBackendConnected(true)
     } catch (err) {
       console.error("Failed to load run:", err)
     }
@@ -55,8 +85,9 @@ function App() {
 
   const fetchSavedDatasets = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/api/dataset/list")
+      const res = await axios.get(`${API_BASE}/api/dataset/list`)
       setSavedDatasets(res.data)
+      setBackendConnected(true)
       if (res.data.length > 0 && !selectedEvalDataset) {
         setSelectedEvalDataset(res.data[0].filename)
       }
@@ -67,8 +98,9 @@ function App() {
 
   const fetchEvalRuns = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/api/evaluation/runs")
+      const res = await axios.get(`${API_BASE}/api/evaluation/runs`)
       setEvalRuns(res.data)
+      setBackendConnected(true)
       if (res.data.length > 0 && !evaluationReport) {
         loadSpecificRun(res.data[0].filename)
       }
@@ -87,23 +119,24 @@ function App() {
     }
   }
 
-  // Initial asynchronous load on dashboard mount
+  // Initial asynchronous load on dashboard mount & auto-reconnect polling
   useEffect(() => {
     let mounted = true
     const initData = async () => {
       try {
         const [datasetRes, evalRes] = await Promise.all([
-          axios.get("http://localhost:8000/api/dataset/list"),
-          axios.get("http://localhost:8000/api/evaluation/runs")
+          axios.get(`${API_BASE}/api/dataset/list`),
+          axios.get(`${API_BASE}/api/evaluation/runs`)
         ])
         if (mounted) {
+          setBackendConnected(true)
           setSavedDatasets(datasetRes.data)
           if (datasetRes.data.length > 0) {
             setSelectedEvalDataset(datasetRes.data[0].filename)
           }
           setEvalRuns(evalRes.data)
           if (evalRes.data.length > 0) {
-            const runRes = await axios.get(`http://localhost:8000/api/evaluation/run/${evalRes.data[0].filename}`)
+            const runRes = await axios.get(`${API_BASE}/api/evaluation/run/${evalRes.data[0].filename}`)
             if (mounted) {
               setEvaluationReport(runRes.data)
             }
@@ -111,11 +144,22 @@ function App() {
         }
       } catch (err) {
         console.error("Dashboard initialization error:", err)
+        if (mounted) {
+          setBackendConnected(false)
+        }
       }
     }
+
+    checkBackendStatus()
     initData()
+
+    const pollInterval = setInterval(() => {
+      checkBackendStatus()
+    }, 3000)
+
     return () => {
       mounted = false
+      clearInterval(pollInterval)
     }
   }, [])
 
@@ -132,17 +176,22 @@ function App() {
       return
     }
     setIsLoading(true)
-    setUploadStatus("Uploading & processing through data pipeline...")
+    setUploadStatus("Uploading & processing through high-speed intelligence pipeline...")
     
     const formData = new FormData()
     formData.append("file", file)
 
+    const startTime = performance.now()
     try {
-      const response = await axios.post("http://localhost:8000/api/upload", formData)
+      const response = await axios.post(`${API_BASE}/api/upload`, formData)
+      const durationMs = Math.round(performance.now() - startTime)
+      setUploadLatency(durationMs)
+      setBackendConnected(true)
       setUploadStatus(response.data.message)
       setAnalysis(response.data.analysis)
     } catch (error) {
-      setUploadStatus("❌ Error: " + (error.response?.data?.detail || error.message))
+      setBackendConnected(false)
+      setUploadStatus("❌ Error: " + getErrorMessage(error))
     }
     setIsLoading(false)
   }
@@ -151,10 +200,11 @@ function App() {
     if (!question.trim()) return
     setIsAsking(true)
     try {
-      const response = await axios.post("http://localhost:8000/api/rag/ask", { question })
+      const response = await axios.post(`${API_BASE}/api/rag/ask`, { question })
       setRagResponse(response.data)
+      setBackendConnected(true)
     } catch (error) {
-      alert("❌ Backend Error: " + (error.response?.data?.detail || error.message))
+      alert("❌ Backend Error: " + getErrorMessage(error))
       console.error(error)
     }
     setIsAsking(false)
@@ -162,16 +212,17 @@ function App() {
 
   const handleGenerateSyntheticQA = async () => {
     setIsGeneratingQA(true)
-    setQaStatus("🤖 Extracting ground truth benchmark test cases via Gemini AI...")
+    setQaStatus("🤖 Extracting ground truth benchmark test cases via high-speed Gemini AI...")
     try {
-      const res = await axios.post("http://localhost:8000/api/dataset/generate", {
+      const res = await axios.post(`${API_BASE}/api/dataset/generate`, {
         num_questions: parseInt(numQuestions, 10)
       })
       setGeneratedDataset(res.data)
+      setBackendConnected(true)
       setQaStatus(`✅ Successfully generated ${res.data.test_cases?.length || 0} benchmark test cases and saved to ${res.data.saved_file}`)
       fetchSavedDatasets()
     } catch (err) {
-      const errMsg = err.response?.data?.detail || err.message
+      const errMsg = getErrorMessage(err)
       setQaStatus("❌ Generation Failed: " + errMsg)
       alert("❌ Error: " + errMsg)
     }
@@ -180,26 +231,28 @@ function App() {
 
   const handleLoadDataset = async (filename) => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/dataset/${filename}`)
+      const res = await axios.get(`${API_BASE}/api/dataset/${filename}`)
       setGeneratedDataset(res.data)
+      setBackendConnected(true)
       setQaStatus(`📂 Loaded dataset: ${filename}`)
     } catch (err) {
-      alert("Failed to load dataset: " + (err.response?.data?.detail || err.message))
+      alert("Failed to load dataset: " + getErrorMessage(err))
     }
   }
 
   const handleRunEvaluation = async () => {
     setIsEvaluating(true)
     try {
-      const res = await axios.post("http://localhost:8000/api/evaluation/run", {
+      const res = await axios.post(`${API_BASE}/api/evaluation/run`, {
         dataset_filename: selectedEvalDataset || null,
         quality_threshold: parseFloat(qualityThreshold),
         fast_mode: fastMode
       })
       setEvaluationReport(res.data)
+      setBackendConnected(true)
       fetchEvalRuns()
     } catch (err) {
-      alert("Evaluation Error: " + (err.response?.data?.detail || err.message))
+      alert("Evaluation Error: " + getErrorMessage(err))
     }
     setIsEvaluating(false)
   }
@@ -207,10 +260,11 @@ function App() {
   const handleRunPytest = async () => {
     setIsRunningPytest(true)
     try {
-      const res = await axios.post("http://localhost:8000/api/tests/run")
+      const res = await axios.post(`${API_BASE}/api/tests/run`)
       setPytestResult(res.data)
+      setBackendConnected(true)
     } catch (err) {
-      alert("Pytest Error: " + (err.response?.data?.detail || err.message))
+      alert("Pytest Error: " + getErrorMessage(err))
     }
     setIsRunningPytest(false)
   }
@@ -226,7 +280,7 @@ function App() {
   return (
     <div className="dashboard-container">
       {/* Header Banner */}
-      <header style={{ textAlign: "center", marginBottom: "16px" }}>
+      <header style={{ textAlign: "center", marginBottom: "20px" }}>
         <div className="header-badge">
           <Sparkles size={14} color="#818cf8" />
           <span>AI-Powered Data Intelligence & RAG Evaluation Platform</span>
@@ -235,6 +289,48 @@ function App() {
         <p className="main-subtitle">
           End-to-end data profiling, document parsing, ChromaDB semantic retrieval, and RAGAS-grade benchmark evaluation.
         </p>
+
+        {/* Real-time Backend Connection Monitor */}
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginTop: "12px" }}>
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "5px 14px",
+            borderRadius: "9999px",
+            fontSize: "12.5px",
+            fontWeight: 600,
+            background: backendConnected ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
+            color: backendConnected ? "#34d399" : "#f87171",
+            border: backendConnected ? "1px solid rgba(16, 185, 129, 0.35)" : "1px solid rgba(239, 68, 68, 0.35)"
+          }}>
+            <span style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              background: backendConnected ? "#10b981" : "#ef4444",
+              display: "inline-block",
+              boxShadow: backendConnected ? "0 0 8px #10b981" : "0 0 8px #ef4444"
+            }} />
+            <span>{backendConnected ? "● Backend Connected (FastAPI :8000)" : "● Backend Disconnected"}</span>
+          </div>
+          {!backendConnected && (
+            <button 
+              onClick={checkBackendStatus} 
+              style={{
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: "#cbd5e1",
+                padding: "4px 12px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}>
+              Retry Connection
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Modern Navigation Tabs */}
@@ -270,6 +366,25 @@ function App() {
       {/* ========================================================= */}
       {activeTab === "upload" && (
         <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {backendConnected === false && (
+            <div style={{
+              padding: "14px 18px",
+              borderRadius: "10px",
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              color: "#fca5a5",
+              fontSize: "13.5px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px"
+            }}>
+              <AlertCircle size={18} color="#ef4444" />
+              <span>
+                <strong>Backend is starting or disconnected:</strong> If starting up, please wait a few seconds. Otherwise open a terminal in <code>backend/</code> and run: <code>uvicorn main:app --reload</code>
+              </span>
+            </div>
+          )}
+
           <div className="glass-card" style={{ padding: "32px" }}>
             <div className="dropzone">
               <UploadCloud size={44} color="#818cf8" style={{ margin: "0 auto 12px auto" }} />
@@ -328,6 +443,19 @@ function App() {
                 }}>
                   {uploadStatus.includes("Error") ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
                   <span>{uploadStatus}</span>
+                  {uploadLatency && !uploadStatus.includes("Error") && (
+                    <span style={{
+                      marginLeft: "8px",
+                      background: "rgba(16, 185, 129, 0.2)",
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#6ee7b7"
+                    }}>
+                      ⚡ {uploadLatency} ms
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -337,11 +465,26 @@ function App() {
             <div className="glass-card animate-fade-in" style={{ padding: "28px" }}>
               {analysis.file_type === "spreadsheet" && (
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-                    <FileSpreadsheet color="#34d399" size={24} />
-                    <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>
-                      Automated Dataset Profile: <span style={{ color: "#a5b4fc" }}>{analysis.filename}</span>
-                    </h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <FileSpreadsheet color="#34d399" size={24} />
+                      <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>
+                        Automated Dataset Profile: <span style={{ color: "#a5b4fc" }}>{analysis.filename}</span>
+                      </h3>
+                    </div>
+                    {uploadLatency && (
+                      <span style={{
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: "#a5b4fc",
+                        background: "rgba(99, 102, 241, 0.15)",
+                        border: "1px solid rgba(99, 102, 241, 0.3)",
+                        padding: "4px 12px",
+                        borderRadius: "9999px"
+                      }}>
+                        ⚡ Vector Indexed in {uploadLatency} ms
+                      </span>
+                    )}
                   </div>
 
                   <div className="stats-grid">
@@ -353,6 +496,22 @@ function App() {
                       <span className="stat-label">Total Columns</span>
                       <span className="stat-val">{analysis.total_columns}</span>
                     </div>
+                    {analysis.kpis && analysis.kpis.primary_metric && (
+                      <>
+                        <div className="stat-box">
+                          <span className="stat-label">Total {analysis.kpis.primary_metric}</span>
+                          <span className="stat-val" style={{ color: "#818cf8" }}>
+                            {typeof analysis.kpis.primary_metric_sum === "number" ? analysis.kpis.primary_metric_sum.toLocaleString() : analysis.kpis.primary_metric_sum}
+                          </span>
+                        </div>
+                        <div className="stat-box">
+                          <span className="stat-label">Avg {analysis.kpis.primary_metric}</span>
+                          <span className="stat-val" style={{ color: "#38bdf8" }}>
+                            {typeof analysis.kpis.primary_metric_avg === "number" ? analysis.kpis.primary_metric_avg.toLocaleString() : analysis.kpis.primary_metric_avg}
+                          </span>
+                        </div>
+                      </>
+                    )}
                     <div className="stat-box">
                       <span className="stat-label">Missing Values</span>
                       <span className="stat-val" style={{ color: analysis.missing_values > 0 ? "#f87171" : "#34d399" }}>
@@ -393,7 +552,7 @@ function App() {
                   {analysis.chart_data && analysis.chart_data.length > 0 && (
                     <div style={{ padding: "20px", borderRadius: "12px", background: "rgba(15, 23, 42, 0.5)", border: "1px solid rgba(255, 255, 255, 0.05)" }}>
                       <h4 style={{ marginBottom: "16px", color: "#cbd5e1", fontSize: "0.95rem" }}>
-                        Categorical & Numerical Distribution Preview
+                        {analysis.chart_title || "Categorical & Numerical Distribution Preview"}
                       </h4>
                       <div style={{ height: "300px", width: "100%" }}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -509,7 +668,7 @@ function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
                   <Bot size={18} color="#818cf8" />
                   <h4 style={{ color: "#c7d2fe", fontSize: "1rem", fontWeight: 700 }}>
-                    Synthesized Grounded Answer (Gemini 3.6 Flash)
+                    Synthesized Grounded Answer (Gemini 3.5 Flash-Lite & ChromaDB)
                   </h4>
                   {ragResponse.latency_ms !== undefined && (
                     <span style={{

@@ -6,24 +6,34 @@
 - Missing Values: 0
 - Duplicate Rows: 0
 
-## Columns and Types:
-Product     object
-Price        int64
-Quantity     int64
+## Executive Summary & KPIs:
+- Primary Metric: Price
+- Total Aggregate Sum: 1,300.0
+- Average Value: 433.33
+
+## Categorical Aggregations & Dimensional Totals:
+### Performance Breakdown by Product (Top 10):
+| Product   |   Total_Price |   Avg_Price |   Order_Count |
+|:----------|--------------:|------------:|--------------:|
+| Laptop    |          1200 |        1200 |             1 |
+| Keyboard  |            75 |          75 |             1 |
+| Mouse     |            25 |          25 |             1 |
 
 ## Summary Statistics:
-         Price  Quantity
-count     3.00      3.00
-mean    433.33     11.67
-std     664.42      7.64
-min      25.00      5.00
-25%      50.00      7.50
-50%      75.00     10.00
-75%     637.50     15.00
-max    1200.00     20.00
+|       |   Price |   Quantity |
+|:------|--------:|-----------:|
+| count |    3    |       3    |
+| mean  |  433.33 |      11.67 |
+| std   |  664.42 |       7.64 |
+| min   |   25    |       5    |
+| 25%   |   50    |       7.5  |
+| 50%   |   75    |      10    |
+| 75%   |  637.5  |      15    |
+| max   | 1200    |      20    |
 
-## Sample Records (First 5 Rows):
-    Product  Price  Quantity
-0    Laptop   1200         5
-1     Mouse     25        20
-2  Keyboard     75        10
+## Sample Records (First 10 Rows):
+|    | Product   |   Price |   Quantity |
+|---:|:----------|--------:|-----------:|
+|  0 | Laptop    |    1200 |          5 |
+|  1 | Mouse     |      25 |         20 |
+|  2 | Keyboard  |      75 |         10 |

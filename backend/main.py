@@ -16,7 +16,7 @@ app = FastAPI(title="AI Data Intelligence & RAG Platform API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +49,10 @@ def read_root():
 def get_status():
     return {"status": "success", "message": "Backend connected successfully!"}
 
+@app.get("/api/health")
+def get_health():
+    return {"status": "healthy", "service": "FastAPI", "version": "2.0.0"}
+
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...)):
     allowed_extensions = [".csv", ".xlsx", ".pdf"]
@@ -71,13 +75,33 @@ async def upload_file(file: UploadFile = File(...)):
         try:
             df = pd.read_csv(file_path) if file_ext == ".csv" else pd.read_excel(file_path)
             
-            # Fast statistical profiling & zero-latency smart insights
-            summary_stats, chart_data = analytics.get_advanced_analytics(df)
+            # Fast statistical profiling & zero-latency smart insights (< 15ms)
+            summary_stats, sample_chart = analytics.get_advanced_analytics(df)
+            kpis = analytics.get_dataset_kpis(df)
+            agg_chart, chart_title = analytics.get_chart_aggregations(df)
+            chart_data = agg_chart if agg_chart else sample_chart
+            kpis["chart_title"] = chart_title
             ai_insights = analytics.get_ai_insights(df, summary_stats)
             
-            # Index spreadsheet profile & columns into ChromaDB for RAG!
+            # Prepare rich, multi-dimensional markdown for high-accuracy RAG retrieval
             col_list = df.columns.tolist()
             num_cols = df.select_dtypes(include=['number']).columns.tolist()
+            cat_cols = df.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+            
+            # Build dimension breakdowns (e.g. Sales by Category, Sales by Region)
+            breakdowns = []
+            if cat_cols and num_cols:
+                primary_metric = num_cols[0]
+                for cat in cat_cols[:4]:
+                    try:
+                        grp = df.groupby(cat).agg({primary_metric: ['sum', 'mean', 'count']}).round(2)
+                        grp.columns = ['Total_' + primary_metric, 'Avg_' + primary_metric, 'Order_Count']
+                        grp = grp.sort_values(by='Total_' + primary_metric, ascending=False).head(10)
+                        breakdowns.append(f"### Performance Breakdown by {cat} (Top 10):\n{grp.to_markdown()}")
+                    except Exception:
+                        pass
+            
+            breakdown_text = "\n\n".join(breakdowns) if breakdowns else "No categorical dimensions found."
             
             spreadsheet_md = f"""# Dataset Profile: {file.filename}
 - File Name: {file.filename}
@@ -87,14 +111,19 @@ async def upload_file(file: UploadFile = File(...)):
 - Missing Values: {int(df.isnull().sum().sum())}
 - Duplicate Rows: {int(df.duplicated().sum())}
 
-## Columns and Types:
-{df.dtypes.to_string()}
+## Executive Summary & KPIs:
+- Primary Metric: {kpis.get('primary_metric')}
+- Total Aggregate Sum: {kpis.get('primary_metric_sum'):,}
+- Average Value: {kpis.get('primary_metric_avg'):,}
+
+## Categorical Aggregations & Dimensional Totals:
+{breakdown_text}
 
 ## Summary Statistics:
-{df[num_cols].describe().round(2).to_string() if num_cols else 'No numeric columns.'}
+{df[num_cols].describe().round(2).to_markdown() if num_cols else 'No numeric columns.'}
 
-## Sample Records (First 5 Rows):
-{df.head(5).to_string()}
+## Sample Records (First 10 Rows):
+{df.head(10).to_markdown()}
 """
             # Save markdown representation
             md_path = os.path.join(PROCESSED_DIR, f"{file.filename}.md")
@@ -112,7 +141,9 @@ async def upload_file(file: UploadFile = File(...)):
                 "columns": col_list,
                 "missing_values": int(df.isnull().sum().sum()),
                 "duplicate_rows": int(df.duplicated().sum()),
-                "chart_data": chart_data,       
+                "chart_data": chart_data,
+                "chart_title": kpis.get("chart_title", "Distribution Preview"),
+                "kpis": kpis,
                 "ai_insights": ai_insights      
             }
         except Exception as e:

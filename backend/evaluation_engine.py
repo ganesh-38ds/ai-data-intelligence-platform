@@ -114,19 +114,31 @@ Return ONLY valid JSON:
 }}
 """
         try:
-            judge_response = client.models.generate_content(
-                model='gemini-3.6-flash',
-                contents=judge_prompt
-            )
-            raw_judge = judge_response.text.strip()
-            if raw_judge.startswith("```json"):
-                raw_judge = raw_judge[7:]
-            elif raw_judge.startswith("```"):
-                raw_judge = raw_judge[3:]
-            if raw_judge.endswith("```"):
-                raw_judge = raw_judge[:-3]
-            raw_judge = raw_judge.strip()
-            scores = json.loads(raw_judge)
+            from google.genai import types
+            candidate_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash"]
+            raw_judge = ""
+            for m in candidate_models:
+                try:
+                    judge_response = client.models.generate_content(
+                        model=m,
+                        contents=judge_prompt,
+                        config=types.GenerateContentConfig(temperature=0.0)
+                    )
+                    if judge_response and judge_response.text:
+                        raw_judge = judge_response.text.strip()
+                        break
+                except Exception:
+                    continue
+
+            if raw_judge:
+                if raw_judge.startswith("```json"):
+                    raw_judge = raw_judge[7:]
+                elif raw_judge.startswith("```"):
+                    raw_judge = raw_judge[3:]
+                if raw_judge.endswith("```"):
+                    raw_judge = raw_judge[:-3]
+                raw_judge = raw_judge.strip()
+                scores = json.loads(raw_judge)
         except Exception:
             scores = None
 

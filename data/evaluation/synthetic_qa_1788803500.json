@@ -1,0 +1,17 @@
+{
+  "source_document": "HRPM UNIT 1 Material.md",
+  "created_at": 1788803500,
+  "num_questions": 2,
+  "test_cases": [
+    {
+      "question": "What does the Statistical Approach use to evaluate HR performance?",
+      "context": "The Statistical Approach uses quantitative data and HR metrics to evaluate HR performance.",
+      "expected_answer": "The Statistical Approach uses quantitative data and HR metrics, such as employee turnover rate, absenteeism rate, training cost, productivity, and employee satisfaction, to evaluate HR performance."
+    },
+    {
+      "question": "What is the purpose of the Background and Reference Check in the selection process?",
+      "context": "The organization verifies the candidate's educational qualifications, previous employment, work experience, and references to ensure the information provided is accurate.",
+      "expected_answer": "The background and reference check verifies a candidate's educational qualifications, previous employment, work experience, and references to ensure the information they provided is accurate."
+    }
+  ]
+}
