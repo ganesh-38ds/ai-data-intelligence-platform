@@ -122,14 +122,16 @@ function App() {
   // Initial asynchronous load on dashboard mount & auto-reconnect polling
   useEffect(() => {
     let mounted = true
+
     const initData = async () => {
       try {
-        const [datasetRes, evalRes] = await Promise.all([
+        const [statusRes, datasetRes, evalRes] = await Promise.all([
+          axios.get(`${API_BASE}/api/status`),
           axios.get(`${API_BASE}/api/dataset/list`),
           axios.get(`${API_BASE}/api/evaluation/runs`)
         ])
         if (mounted) {
-          setBackendConnected(true)
+          setBackendConnected(statusRes.status === 200)
           setSavedDatasets(datasetRes.data)
           if (datasetRes.data.length > 0) {
             setSelectedEvalDataset(datasetRes.data[0].filename)
@@ -150,11 +152,19 @@ function App() {
       }
     }
 
-    checkBackendStatus()
     initData()
 
-    const pollInterval = setInterval(() => {
-      checkBackendStatus()
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/status`, { timeout: 3000 })
+        if (mounted) {
+          setBackendConnected(res.status === 200)
+        }
+      } catch {
+        if (mounted) {
+          setBackendConnected(false)
+        }
+      }
     }, 3000)
 
     return () => {
