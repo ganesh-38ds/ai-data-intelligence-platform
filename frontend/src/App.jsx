@@ -7,16 +7,17 @@ import {
   BarChart3, Search, Sparkles, UploadCloud, FileSpreadsheet, 
   FileText, CheckCircle2, AlertCircle, Database, Bot, ArrowRight,
   Layers, RefreshCw, BookOpen, CheckCheck, ShieldCheck,
-  Target, Award, XCircle, Activity, Play
+  Target, Award, XCircle, Activity, Play,
+  Trash2, Filter
 } from 'lucide-react'
 import './App.css'
 
-const API_BASE = "http://localhost:8000"
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ""
 
 const getErrorMessage = (error) => {
   if (!error) return "Unknown error"
   if (error.message === "Network Error" || !error.response) {
-    return "Cannot connect to local backend server at http://localhost:8000. Please ensure FastAPI is running via .venv\\Scripts\\python.exe -m uvicorn main:app --port 8000."
+    return "Cannot connect to local backend server. Please ensure FastAPI is running via uvicorn main:app --reload (port 8000)."
   }
   return error.response?.data?.detail || error.message
 }
@@ -38,9 +39,13 @@ function App() {
   const [question, setQuestion] = useState("")
   const [ragResponse, setRagResponse] = useState(null)
   const [isAsking, setIsAsking] = useState(false)
+  const [indexedDocs, setIndexedDocs] = useState([])
+  const [targetDocument, setTargetDocument] = useState("all")
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false)
 
   // ---------------- Tab 3: Synthetic QA Generator State ----------------
   const [numQuestions, setNumQuestions] = useState(3)
+  const [syntheticTargetDocument, setSyntheticTargetDocument] = useState("")
   const [isGeneratingQA, setIsGeneratingQA] = useState(false)
   const [qaStatus, setQaStatus] = useState("")
   const [generatedDataset, setGeneratedDataset] = useState(null)
@@ -58,15 +63,108 @@ function App() {
   const [pytestResult, setPytestResult] = useState(null)
   const [isRunningPytest, setIsRunningPytest] = useState(false)
 
+  // ---------------- Document Content Inspection State ----------------
+  const [viewingDocContent, setViewingDocContent] = useState(null)
+  const [isLoadingContent, setIsLoadingContent] = useState(false)
+
+  const handleViewDocContent = async (filename) => {
+    setIsLoadingContent(true)
+    try {
+      const res = await axios.get(`${API_BASE}/api/documents/content/${encodeURIComponent(filename)}`)
+      setViewingDocContent(res.data)
+    } catch (err) {
+      alert("Failed to load document content: " + getErrorMessage(err))
+    }
+    setIsLoadingContent(false)
+  }
+
+  const handleAskQuickQuestion = (q, docScope) => {
+    setQuestion(q)
+    if (docScope) {
+      setTargetDocument(docScope)
+    }
+    setActiveTab("rag")
+    setIsAsking(true)
+    axios.post(`${API_BASE}/api/rag/ask`, { 
+      question: q,
+      document_filter: docScope === "all" ? null : docScope
+    }).then(response => {
+      setRagResponse(response.data)
+      setBackendConnected(true)
+    }).catch(error => {
+      alert("❌ Backend Error: " + getErrorMessage(error))
+    }).finally(() => {
+      setIsAsking(false)
+    })
+  }
+
+  const fetchIndexedDocs = async () => {
+    setIsLoadingDocs(true)
+    try {
+      const res = await axios.get(`${API_BASE}/api/documents`)
+      setIndexedDocs(res.data)
+      setBackendConnected(true)
+    } catch (err) {
+      console.error("Failed to fetch indexed documents:", err)
+    }
+    setIsLoadingDocs(false)
+  }
+
+  const handleDeleteDocument = async (filename) => {
+    if (!window.confirm(`Are you sure you want to delete '${filename}' from the vector database?`)) {
+      return
+    }
+    try {
+      await axios.delete(`${API_BASE}/api/documents/${encodeURIComponent(filename)}`)
+      if (targetDocument === filename) {
+        setTargetDocument("all")
+      }
+      fetchIndexedDocs()
+    } catch (err) {
+      alert("❌ Failed to delete document: " + getErrorMessage(err))
+    }
+  }
+
+  const handleClearAllDocuments = async () => {
+    if (!window.confirm("Are you sure you want to clear ALL indexed documents from the vector database?")) {
+      return
+    }
+    try {
+      await axios.post(`${API_BASE}/api/documents/clear`)
+      setTargetDocument("all")
+      setRagResponse(null)
+      fetchIndexedDocs()
+    } catch (err) {
+      alert("❌ Failed to clear database: " + getErrorMessage(err))
+    }
+  }
+
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  const handleSyncDocuments = async () => {
+    setIsSyncing(true)
+    try {
+      const res = await axios.post(`${API_BASE}/api/documents/sync`)
+      await fetchIndexedDocs()
+      alert("✅ " + res.data.message)
+    } catch (err) {
+      alert("❌ Sync failed: " + getErrorMessage(err))
+    }
+    setIsSyncing(false)
+  }
+
   const checkBackendStatus = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/status`, { timeout: 3000 })
-      if (res.status === 200) {
+      if (res.status === 200 && res.data?.status === "success") {
         setBackendConnected(true)
         fetchSavedDatasets()
         fetchEvalRuns()
+        fetchIndexedDocs()
         return true
       }
+      setBackendConnected(false)
+      return false
     } catch {
       setBackendConnected(false)
       return false
@@ -88,8 +186,16 @@ function App() {
       const res = await axios.get(`${API_BASE}/api/dataset/list`)
       setSavedDatasets(res.data)
       setBackendConnected(true)
-      if (res.data.length > 0 && !selectedEvalDataset) {
-        setSelectedEvalDataset(res.data[0].filename)
+      if (res.data.length > 0) {
+        if (!selectedEvalDataset) {
+          setSelectedEvalDataset(res.data[0].filename)
+        }
+        if (!generatedDataset) {
+          try {
+            const dRes = await axios.get(`${API_BASE}/api/dataset/${res.data[0].filename}`)
+            setGeneratedDataset(dRes.data)
+          } catch {}
+        }
       }
     } catch (err) {
       console.error("Failed to fetch saved datasets:", err)
@@ -111,6 +217,9 @@ function App() {
 
   const handleTabSelect = (tab) => {
     setActiveTab(tab)
+    if (tab === "rag") {
+      fetchIndexedDocs()
+    }
     if (tab === "synthetic" || tab === "evaluation") {
       fetchSavedDatasets()
     }
@@ -125,13 +234,25 @@ function App() {
 
     const initData = async () => {
       try {
-        const [statusRes, datasetRes, evalRes] = await Promise.all([
-          axios.get(`${API_BASE}/api/status`),
+        const statusRes = await axios.get(`${API_BASE}/api/status`, { timeout: 3000 })
+        if (mounted) {
+          setBackendConnected(statusRes.status === 200 && statusRes.data?.status === "success")
+        }
+      } catch (err) {
+        console.error("Backend status check failed:", err)
+        if (mounted) {
+          setBackendConnected(false)
+        }
+        return
+      }
+
+      try {
+        const [datasetRes, evalRes, docsRes] = await Promise.all([
           axios.get(`${API_BASE}/api/dataset/list`),
-          axios.get(`${API_BASE}/api/evaluation/runs`)
+          axios.get(`${API_BASE}/api/evaluation/runs`),
+          axios.get(`${API_BASE}/api/documents`)
         ])
         if (mounted) {
-          setBackendConnected(statusRes.status === 200)
           setSavedDatasets(datasetRes.data)
           if (datasetRes.data.length > 0) {
             setSelectedEvalDataset(datasetRes.data[0].filename)
@@ -143,12 +264,10 @@ function App() {
               setEvaluationReport(runRes.data)
             }
           }
+          setIndexedDocs(docsRes.data)
         }
       } catch (err) {
-        console.error("Dashboard initialization error:", err)
-        if (mounted) {
-          setBackendConnected(false)
-        }
+        console.error("Dashboard initial dataset/run load warning:", err)
       }
     }
 
@@ -157,15 +276,23 @@ function App() {
     const pollInterval = setInterval(async () => {
       try {
         const res = await axios.get(`${API_BASE}/api/status`, { timeout: 3000 })
+        const isOnline = res.status === 200 && res.data?.status === "success"
         if (mounted) {
-          setBackendConnected(res.status === 200)
+          setBackendConnected(prev => {
+            if (!prev && isOnline) {
+              fetchSavedDatasets()
+              fetchEvalRuns()
+              fetchIndexedDocs()
+            }
+            return isOnline
+          })
         }
       } catch {
         if (mounted) {
           setBackendConnected(false)
         }
       }
-    }, 3000)
+    }, 2500)
 
     return () => {
       mounted = false
@@ -199,6 +326,11 @@ function App() {
       setBackendConnected(true)
       setUploadStatus(response.data.message)
       setAnalysis(response.data.analysis)
+      if (response.data.analysis?.filename) {
+        setTargetDocument(response.data.analysis.filename)
+        setSyntheticTargetDocument(response.data.analysis.filename)
+      }
+      fetchIndexedDocs()
     } catch (error) {
       setBackendConnected(false)
       setUploadStatus("❌ Error: " + getErrorMessage(error))
@@ -210,7 +342,10 @@ function App() {
     if (!question.trim()) return
     setIsAsking(true)
     try {
-      const response = await axios.post(`${API_BASE}/api/rag/ask`, { question })
+      const response = await axios.post(`${API_BASE}/api/rag/ask`, { 
+        question,
+        document_filter: targetDocument === "all" ? null : targetDocument
+      })
       setRagResponse(response.data)
       setBackendConnected(true)
     } catch (error) {
@@ -224,13 +359,18 @@ function App() {
     setIsGeneratingQA(true)
     setQaStatus("🤖 Extracting ground truth benchmark test cases via high-speed Gemini AI...")
     try {
+      const docToUse = syntheticTargetDocument || (targetDocument !== "all" ? targetDocument : (indexedDocs[0]?.source || null))
       const res = await axios.post(`${API_BASE}/api/dataset/generate`, {
-        num_questions: parseInt(numQuestions, 10)
+        num_questions: parseInt(numQuestions, 10),
+        filename: docToUse
       })
       setGeneratedDataset(res.data)
       setBackendConnected(true)
-      setQaStatus(`✅ Successfully generated ${res.data.test_cases?.length || 0} benchmark test cases and saved to ${res.data.saved_file}`)
-      fetchSavedDatasets()
+      setQaStatus(`✅ Successfully generated ${res.data.test_cases?.length || 0} benchmark test cases for ${res.data.source_document} and saved to ${res.data.saved_file}`)
+      await fetchSavedDatasets()
+      if (res.data.saved_file) {
+        setSelectedEvalDataset(res.data.saved_file)
+      }
     } catch (err) {
       const errMsg = getErrorMessage(err)
       setQaStatus("❌ Generation Failed: " + errMsg)
@@ -310,21 +450,27 @@ function App() {
             borderRadius: "9999px",
             fontSize: "12.5px",
             fontWeight: 600,
-            background: backendConnected ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
-            color: backendConnected ? "#34d399" : "#f87171",
-            border: backendConnected ? "1px solid rgba(16, 185, 129, 0.35)" : "1px solid rgba(239, 68, 68, 0.35)"
+            background: backendConnected === true ? "rgba(16, 185, 129, 0.12)" : backendConnected === null ? "rgba(245, 158, 11, 0.12)" : "rgba(239, 68, 68, 0.12)",
+            color: backendConnected === true ? "#34d399" : backendConnected === null ? "#fcd34d" : "#f87171",
+            border: backendConnected === true ? "1px solid rgba(16, 185, 129, 0.35)" : backendConnected === null ? "1px solid rgba(245, 158, 11, 0.35)" : "1px solid rgba(239, 68, 68, 0.35)"
           }}>
             <span style={{
               width: "8px",
               height: "8px",
               borderRadius: "50%",
-              background: backendConnected ? "#10b981" : "#ef4444",
+              background: backendConnected === true ? "#10b981" : backendConnected === null ? "#f59e0b" : "#ef4444",
               display: "inline-block",
-              boxShadow: backendConnected ? "0 0 8px #10b981" : "0 0 8px #ef4444"
+              boxShadow: backendConnected === true ? "0 0 8px #10b981" : backendConnected === null ? "0 0 8px #f59e0b" : "0 0 8px #ef4444"
             }} />
-            <span>{backendConnected ? "● Backend Connected (FastAPI :8000)" : "● Backend Disconnected"}</span>
+            <span>
+              {backendConnected === true 
+                ? "● Backend Connected (FastAPI :8000)" 
+                : backendConnected === null 
+                ? "● Checking Backend..." 
+                : "● Backend Disconnected"}
+            </span>
           </div>
-          {!backendConnected && (
+          {backendConnected === false && (
             <button 
               onClick={checkBackendStatus} 
               style={{
@@ -380,7 +526,7 @@ function App() {
             <div style={{
               padding: "14px 18px",
               borderRadius: "10px",
-              background: "rgba(239, 68, 68, 0.15)",
+              background: "rgba(239, 68, 68, 0.12)",
               border: "1px solid rgba(239, 68, 68, 0.3)",
               color: "#fca5a5",
               fontSize: "13.5px",
@@ -390,7 +536,7 @@ function App() {
             }}>
               <AlertCircle size={18} color="#ef4444" />
               <span>
-                <strong>Backend is starting or disconnected:</strong> If starting up, please wait a few seconds. Otherwise open a terminal in <code>backend/</code> and run: <code>uvicorn main:app --reload</code>
+                <strong>Backend starting up or offline:</strong> Auto-reconnecting... If backend isn&apos;t running, launch <code>run.bat</code> or run <code>uvicorn main:app --reload</code> in <code>backend/</code>.
               </span>
             </div>
           )}
@@ -399,16 +545,16 @@ function App() {
             <div className="dropzone">
               <UploadCloud size={44} color="#818cf8" style={{ margin: "0 auto 12px auto" }} />
               <h3 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "6px" }}>
-                Upload PDF Documents or Data Spreadsheets
+                Upload Documents, Resumes/CVs, or Spreadsheets
               </h3>
               <p style={{ color: "#94a3b8", fontSize: "14px", marginBottom: "20px" }}>
-                Supports CSV, Excel (.xlsx), and PDF files for automated AI extraction & profiling
+                Supports PDF, Word (.docx), Resumes/CVs, Spreadsheets (.csv, .xlsx), and Text (.txt, .md) files
               </p>
 
               <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                 <input 
                   type="file" 
-                  accept=".csv, .xlsx, .pdf" 
+                  accept=".csv, .xlsx, .xls, .pdf, .docx, .doc, .txt, .md" 
                   onChange={handleFileChange} 
                   disabled={isLoading}
                   style={{
@@ -581,28 +727,80 @@ function App() {
                 </div>
               )}
 
-              {analysis.file_type === "pdf" && (
+              {analysis.file_type !== "spreadsheet" && (
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-                    <FileText color="#38bdf8" size={24} />
-                    <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>
-                      Document Processed & Indexed: <span style={{ color: "#38bdf8" }}>{analysis.filename}</span>
-                    </h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <FileText color="#38bdf8" size={24} />
+                      <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>
+                        Document Processed & Vector Indexed: <span style={{ color: "#38bdf8" }}>{analysis.filename}</span>
+                      </h3>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      {analysis.chunk_count && (
+                        <span style={{ fontSize: "12px", padding: "4px 10px", borderRadius: "9999px", background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.3)", fontWeight: 600 }}>
+                          {analysis.chunk_count} Vector Chunks
+                        </span>
+                      )}
+                      {analysis.word_count && (
+                        <span style={{ fontSize: "12px", padding: "4px 10px", borderRadius: "9999px", background: "rgba(99, 102, 241, 0.15)", color: "#a5b4fc", border: "1px solid rgba(99, 102, 241, 0.3)", fontWeight: 600 }}>
+                          {analysis.word_count.toLocaleString()} Words
+                        </span>
+                      )}
+                    </div>
                   </div>
+
                   <div style={{
-                    padding: "16px 20px", 
+                    padding: "14px 18px", 
                     borderRadius: "10px", 
                     background: "rgba(16, 185, 129, 0.1)", 
                     border: "1px solid rgba(16, 185, 129, 0.25)",
-                    marginBottom: "18px",
+                    marginBottom: "16px",
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
                     gap: "10px"
                   }}>
-                    <CheckCheck color="#34d399" size={20} />
-                    <span style={{ fontSize: "14px", color: "#34d399", fontWeight: 500 }}>
-                      Extracted into clean Markdown and stored as vector embeddings in ChromaDB for instant retrieval.
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <CheckCheck color="#34d399" size={20} />
+                      <span style={{ fontSize: "13.5px", color: "#34d399", fontWeight: 500 }}>
+                        Extracted into structured Markdown and indexed into ChromaDB for 100% accurate grounded RAG answers.
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button 
+                        onClick={() => {
+                          setTargetDocument(analysis.filename)
+                          setActiveTab("rag")
+                        }}
+                        className="btn-primary"
+                        style={{ padding: "6px 12px", fontSize: "12px" }}>
+                        <Search size={13} />
+                        <span>Ask in RAG</span>
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSyntheticTargetDocument(analysis.filename)
+                          setActiveTab("synthetic")
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "6px 12px",
+                          fontSize: "12px",
+                          background: "rgba(99, 102, 241, 0.2)",
+                          border: "1px solid rgba(99, 102, 241, 0.4)",
+                          borderRadius: "8px",
+                          color: "#c7d2fe",
+                          cursor: "pointer",
+                          fontWeight: 600
+                        }}>
+                        <Sparkles size={13} />
+                        <span>Benchmark</span>
+                      </button>
+                    </div>
                   </div>
                   <pre style={{
                     background: "#090d16",
@@ -622,6 +820,209 @@ function App() {
               )}
             </div>
           )}
+
+          {/* Active Knowledge Base & Document Explorer */}
+          <div className="glass-card" style={{ padding: "28px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <Database size={22} color="#818cf8" />
+                <div>
+                  <h3 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>
+                    Active Knowledge Base ({indexedDocs.length} {indexedDocs.length === 1 ? "Document" : "Documents"} Indexed)
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "#94a3b8", margin: "3px 0 0 0" }}>
+                    Documents stored in vector database ready for semantic search, QA, and evaluation
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button 
+                  onClick={handleSyncDocuments}
+                  disabled={isSyncing}
+                  className="btn-secondary"
+                  title="Scan disk and restore all processed documents into ChromaDB"
+                  style={{ fontSize: "12.5px", padding: "6px 14px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                  <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} />
+                  <span>{isSyncing ? "Syncing..." : "Sync From Disk"}</span>
+                </button>
+                <button 
+                  onClick={fetchIndexedDocs}
+                  className="btn-secondary"
+                  style={{ fontSize: "12.5px", padding: "6px 14px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                  <RefreshCw size={14} className={isLoadingDocs ? "animate-spin" : ""} />
+                  <span>Refresh Library</span>
+                </button>
+                {indexedDocs.length > 0 && (
+                  <button 
+                    onClick={handleClearAllDocuments}
+                    style={{
+                      background: "rgba(239, 68, 68, 0.1)",
+                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                      color: "#f87171",
+                      padding: "6px 14px",
+                      borderRadius: "8px",
+                      fontSize: "12.5px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}>
+                    <Trash2 size={14} />
+                    <span>Clear All</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {indexedDocs.length === 0 ? (
+              <p style={{ fontSize: "13.5px", color: "#94a3b8", margin: 0, padding: "20px", textAlign: "center", background: "rgba(15, 23, 42, 0.4)", borderRadius: "8px" }}>
+                No documents currently indexed. Drop a PDF or spreadsheet above to start exploring!
+              </p>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
+                {indexedDocs.map((doc, idx) => (
+                  <div key={idx} style={{
+                    padding: "18px 20px",
+                    borderRadius: "12px",
+                    background: "rgba(15, 23, 42, 0.7)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        {doc.file_type === "spreadsheet" ? <FileSpreadsheet color="#34d399" size={22} /> : <FileText color="#38bdf8" size={22} />}
+                        <div>
+                          <strong style={{ fontSize: "14px", color: "#f8fafc", wordBreak: "break-all", display: "block" }}>
+                            {doc.source}
+                          </strong>
+                          <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                            {doc.chunk_count} vector chunks · {doc.file_type.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteDocument(doc.source)}
+                        title="Delete from knowledge base"
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          color: "#94a3b8",
+                          cursor: "pointer",
+                          padding: "4px"
+                        }}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "auto", paddingTop: "8px", borderTop: "1px solid rgba(255, 255, 255, 0.05)" }}>
+                      <button 
+                        onClick={() => {
+                          setTargetDocument(doc.source)
+                          setActiveTab("rag")
+                        }}
+                        className="btn-primary"
+                        style={{ fontSize: "12px", padding: "6px 10px", flex: 1, justifyContent: "center" }}>
+                        <Search size={13} />
+                        <span>Ask in RAG</span>
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSyntheticTargetDocument(doc.source)
+                          setActiveTab("synthetic")
+                        }}
+                        style={{
+                          background: "rgba(99, 102, 241, 0.15)",
+                          border: "1px solid rgba(99, 102, 241, 0.3)",
+                          color: "#a5b4fc",
+                          padding: "6px 10px",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          flex: 1,
+                          justifyContent: "center"
+                        }}>
+                        <Database size={13} />
+                        <span>Benchmark</span>
+                      </button>
+                      <button 
+                        onClick={() => handleViewDocContent(doc.source)}
+                        style={{
+                          background: "rgba(255, 255, 255, 0.06)",
+                          border: "1px solid rgba(255, 255, 255, 0.12)",
+                          color: "#cbd5e1",
+                          padding: "6px 10px",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}>
+                        <BookOpen size={13} />
+                        <span>Read Notes</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Extracted Notes Drawer / Modal View */}
+            {viewingDocContent && (
+              <div style={{
+                marginTop: "20px",
+                padding: "20px",
+                borderRadius: "12px",
+                background: "#090d16",
+                border: "1px solid rgba(99, 102, 241, 0.3)"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <BookOpen size={18} color="#818cf8" />
+                    <h4 style={{ color: "#a5b4fc", margin: 0, fontSize: "14px", fontWeight: 700 }}>
+                      Extracted Content Preview: {viewingDocContent.filename} ({viewingDocContent.length} chars)
+                    </h4>
+                  </div>
+                  <button 
+                    onClick={() => setViewingDocContent(null)}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.1)",
+                      border: "none",
+                      color: "#cbd5e1",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      cursor: "pointer"
+                    }}>
+                    ✕ Close
+                  </button>
+                </div>
+                <pre style={{
+                  maxHeight: "360px",
+                  overflowY: "auto",
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "12.5px",
+                  color: "#cbd5e1",
+                  lineHeight: 1.6,
+                  padding: "12px",
+                  background: "rgba(15, 23, 42, 0.6)",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(255, 255, 255, 0.05)"
+                }}>
+                  {viewingDocContent.content}
+                </pre>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -634,17 +1035,314 @@ function App() {
             <Search color="#818cf8" size={24} />
             <h2 style={{ fontSize: "1.4rem", fontWeight: 700 }}>RAG Pipeline Testing & Query Inspection</h2>
           </div>
-          <p style={{ color: "#94a3b8", fontSize: "14px", marginBottom: "24px" }}>
-            Submit queries to test semantic search against indexed ChromaDB vector stores and review the LLM's grounded synthesis.
+          <p style={{ color: "#94a3b8", fontSize: "14px", marginBottom: "20px" }}>
+            Query indexed vector stores with precise document scoping. Scoping strictly restricts retrieval to your selected document, preventing previous or unrelated files from mixing into your answers.
           </p>
 
+          {/* 1. DOCUMENT SCOPE SELECTOR */}
+          <div style={{
+            padding: "16px 20px",
+            borderRadius: "12px",
+            background: "rgba(15, 23, 42, 0.6)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "14px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "13.5px", fontWeight: 600, color: "#cbd5e1", display: "flex", alignItems: "center", gap: "6px" }}>
+                <Filter size={16} color="#818cf8" />
+                Query Target Document:
+              </span>
+              <select 
+                value={targetDocument} 
+                onChange={(e) => setTargetDocument(e.target.value)}
+                className="modern-select"
+                style={{ minWidth: "260px" }}>
+                <option value="all">🌐 All Documents (Intelligent Auto-Detection)</option>
+                {indexedDocs.map((doc, idx) => (
+                  <option key={idx} value={doc.source}>
+                    {doc.file_type === "spreadsheet" ? "📊" : "📄"} {doc.source} ({doc.chunk_count} chunks)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {targetDocument !== "all" ? (
+                <span style={{
+                  fontSize: "12px",
+                  color: "#34d399",
+                  background: "rgba(52, 211, 153, 0.12)",
+                  border: "1px solid rgba(52, 211, 153, 0.3)",
+                  padding: "4px 12px",
+                  borderRadius: "9999px",
+                  fontWeight: 600
+                }}>
+                  ✓ Strictly Scoped: Only "{targetDocument}" will be queried
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: "12px",
+                  color: "#94a3b8",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  padding: "4px 12px",
+                  borderRadius: "9999px"
+                }}>
+                  Auto-detects document mentions (e.g., CV, sales data)
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 2. INDEXED DOCUMENTS MANAGEMENT PANEL */}
+          <div style={{
+            padding: "16px 20px",
+            borderRadius: "12px",
+            background: "rgba(15, 23, 42, 0.4)",
+            border: "1px solid rgba(255, 255, 255, 0.06)",
+            marginBottom: "24px"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Database size={16} color="#38bdf8" />
+                <span style={{ fontSize: "13.5px", fontWeight: 600, color: "#e2e8f0" }}>
+                  Active Knowledge Base ({indexedDocs.length} {indexedDocs.length === 1 ? "document" : "documents"} indexed)
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <button 
+                  onClick={handleSyncDocuments}
+                  disabled={isSyncing}
+                  className="tab-btn" 
+                  title="Scan disk and restore all processed documents into ChromaDB"
+                  style={{ padding: "6px 12px", fontSize: "12px", background: "rgba(99, 102, 241, 0.15)", color: "#a5b4fc", border: "1px solid rgba(99, 102, 241, 0.3)" }}>
+                  <RefreshCw size={13} className={isSyncing ? "animate-spin" : ""} />
+                  <span>{isSyncing ? "Syncing..." : "Sync From Disk"}</span>
+                </button>
+                <button 
+                  onClick={fetchIndexedDocs} 
+                  disabled={isLoadingDocs}
+                  className="tab-btn" 
+                  style={{ padding: "6px 12px", fontSize: "12px", background: "rgba(255, 255, 255, 0.05)" }}>
+                  <RefreshCw size={13} className={isLoadingDocs ? "animate-spin" : ""} />
+                  <span>Refresh Index</span>
+                </button>
+                {indexedDocs.length > 0 && (
+                  <button 
+                    onClick={handleClearAllDocuments}
+                    className="tab-btn" 
+                    style={{ padding: "6px 12px", fontSize: "12px", color: "#f87171", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.25)" }}>
+                    <Trash2 size={13} />
+                    <span>Clear All</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {indexedDocs.length === 0 ? (
+              <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                No documents indexed yet. Upload a dataset or PDF in the Data Ingestion tab to begin querying.
+              </p>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "10px" }}>
+                {indexedDocs.map((doc, idx) => {
+                  const isSelected = targetDocument === doc.source
+                  return (
+                    <div key={idx} style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      background: isSelected ? "rgba(99, 102, 241, 0.15)" : "rgba(30, 41, 59, 0.6)",
+                      border: isSelected ? "1px solid rgba(99, 102, 241, 0.4)" : "1px solid rgba(255, 255, 255, 0.05)",
+                      transition: "all 0.2s ease"
+                    }}>
+                      <div 
+                        onClick={() => setTargetDocument(doc.source)}
+                        style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", flex: 1, minWidth: 0 }}>
+                        {doc.file_type === "spreadsheet" ? <FileSpreadsheet size={16} color="#34d399" /> : <FileText size={16} color="#38bdf8" />}
+                        <span style={{
+                          fontSize: "13px",
+                          fontWeight: isSelected ? 700 : 500,
+                          color: isSelected ? "#a5b4fc" : "#cbd5e1",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap"
+                        }}>
+                          {doc.source}
+                        </span>
+                        <span style={{
+                          fontSize: "11px",
+                          color: "#94a3b8",
+                          background: "rgba(255, 255, 255, 0.08)",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          flexShrink: 0
+                        }}>
+                          {doc.chunk_count}c
+                        </span>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "8px" }}>
+                        <button
+                          onClick={() => setTargetDocument(isSelected ? "all" : doc.source)}
+                          title={isSelected ? "Unscope to All Documents" : "Scope queries to this document"}
+                          style={{
+                            background: isSelected ? "#6366f1" : "rgba(255, 255, 255, 0.06)",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "4px 8px",
+                            fontSize: "11px",
+                            color: isSelected ? "#fff" : "#94a3b8",
+                            cursor: "pointer"
+                          }}>
+                          {isSelected ? "Active" : "Target"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDocument(doc.source)}
+                          title="Delete from indexed database"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            padding: "4px",
+                            borderRadius: "6px",
+                            color: "#94a3b8",
+                            cursor: "pointer"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = "#f87171"}
+                          onMouseLeave={(e) => e.currentTarget.style.color = "#94a3b8"}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Discovery Topic Chips */}
+          <div style={{
+            marginBottom: "20px",
+            padding: "16px 20px",
+            borderRadius: "12px",
+            background: "rgba(15, 23, 42, 0.5)",
+            border: "1px solid rgba(255, 255, 255, 0.06)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+              <Sparkles size={16} color="#fbbf24" />
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "#f8fafc" }}>
+                Instant Questions for Your Active Knowledge Base (Click to Query):
+              </span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              <button 
+                type="button"
+                onClick={() => handleAskQuickQuestion("What is Total Quality Management (TQM) and its core objectives?", "unit-1- TQM.pdf")}
+                style={{
+                  background: "rgba(99, 102, 241, 0.12)",
+                  border: "1px solid rgba(99, 102, 241, 0.3)",
+                  color: "#c7d2fe",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  cursor: "pointer",
+                  textAlign: "left"
+                }}>
+                📘 <strong>TQM:</strong> Definition & Core Objectives
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleAskQuickQuestion("Explain Deming's 14 quality principles and Juran's Quality Trilogy.", "unit-1- TQM.pdf")}
+                style={{
+                  background: "rgba(99, 102, 241, 0.12)",
+                  border: "1px solid rgba(99, 102, 241, 0.3)",
+                  color: "#c7d2fe",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  cursor: "pointer",
+                  textAlign: "left"
+                }}>
+                📘 <strong>TQM:</strong> Deming & Juran Principles
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleAskQuickQuestion("What are the objectives and process of Human Resource Planning (HRP)?", "HRPM UNIT 1 Material.pdf")}
+                style={{
+                  background: "rgba(16, 185, 129, 0.12)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  color: "#a7f3d0",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  cursor: "pointer",
+                  textAlign: "left"
+                }}>
+                📗 <strong>HRPM Unit 1:</strong> HRP Objectives & Process
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleAskQuickQuestion("Describe the primary sources of recruitment and selection methods.", "HRPM UNIT 1 Material.pdf")}
+                style={{
+                  background: "rgba(16, 185, 129, 0.12)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  color: "#a7f3d0",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  cursor: "pointer",
+                  textAlign: "left"
+                }}>
+                📗 <strong>HRPM Unit 1:</strong> Recruitment & Selection
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleAskQuickQuestion("What is Performance Appraisal and what methods are explained?", "HRPM UNIT II MATERIAL_.pdf")}
+                style={{
+                  background: "rgba(14, 165, 233, 0.12)",
+                  border: "1px solid rgba(14, 165, 233, 0.3)",
+                  color: "#bae6fd",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  cursor: "pointer",
+                  textAlign: "left"
+                }}>
+                📙 <strong>HRPM Unit 2:</strong> Performance Appraisal Methods
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleAskQuickQuestion("What factors influence employee compensation, wage structures, and incentives?", "HRPM UNIT II MATERIAL_.pdf")}
+                style={{
+                  background: "rgba(14, 165, 233, 0.12)",
+                  border: "1px solid rgba(14, 165, 233, 0.3)",
+                  color: "#bae6fd",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  cursor: "pointer",
+                  textAlign: "left"
+                }}>
+                📙 <strong>HRPM Unit 2:</strong> Compensation & Wages
+              </button>
+            </div>
+          </div>
+
+          {/* 3. QUERY INPUT */}
           <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
             <input 
               type="text" 
               value={question} 
               onChange={(e) => setQuestion(e.target.value)} 
               onKeyDown={(e) => e.key === 'Enter' && handleAskQuestion()}
-              placeholder="Ask a question from your indexed document (e.g., What is HRM according to Flippo?)..." 
+              placeholder={targetDocument !== "all" ? `Ask a question about ${targetDocument}...` : "Ask a question from your indexed documents..."}
               className="modern-input"
               style={{ flex: 1 }}
             />
@@ -666,6 +1364,7 @@ function App() {
             </button>
           </div>
 
+          {/* 4. RESULTS DISPLAY */}
           {ragResponse && (
             <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div style={{
@@ -675,11 +1374,24 @@ function App() {
                 border: "1px solid rgba(99, 102, 241, 0.35)",
                 boxShadow: "0 4px 20px rgba(99, 102, 241, 0.15)"
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", flexWrap: "wrap" }}>
                   <Bot size={18} color="#818cf8" />
                   <h4 style={{ color: "#c7d2fe", fontSize: "1rem", fontWeight: 700 }}>
-                    Synthesized Grounded Answer (Gemini 3.5 Flash-Lite & ChromaDB)
+                    Synthesized Grounded Answer
                   </h4>
+                  {ragResponse.target_document && (
+                    <span style={{
+                      fontSize: "12px",
+                      color: "#34d399",
+                      background: "rgba(52, 211, 153, 0.12)",
+                      border: "1px solid rgba(52, 211, 153, 0.3)",
+                      padding: "2px 8px",
+                      borderRadius: "9999px",
+                      fontWeight: 600
+                    }}>
+                      Scoped: {ragResponse.target_document}
+                    </span>
+                  )}
                   {ragResponse.latency_ms !== undefined && (
                     <span style={{
                       marginLeft: "auto",
@@ -704,7 +1416,7 @@ function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
                   <Layers size={18} color="#38bdf8" />
                   <h4 style={{ fontSize: "1.05rem", fontWeight: 600, color: "#e2e8f0" }}>
-                    Retrieved Source Context Chunks (ChromaDB)
+                    Retrieved Source Context Chunks ({ragResponse.retrieved_chunks?.length || 0})
                   </h4>
                 </div>
 
@@ -728,9 +1440,16 @@ function App() {
                         }}>
                           Chunk #{idx + 1}
                         </span>
-                        <span style={{ fontSize: "12px", color: "#64748b" }}>
-                          Source: {chunk.source}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          {chunk.distance !== undefined && (
+                            <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                              Distance: {chunk.distance}
+                            </span>
+                          )}
+                          <span style={{ fontSize: "12px", color: "#a5b4fc", fontWeight: 500 }}>
+                            Source: {chunk.source}
+                          </span>
+                        </div>
                       </div>
                       <p style={{ fontSize: "13.5px", color: "#cbd5e1", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                         {chunk.text}
@@ -773,7 +1492,25 @@ function App() {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <label style={{ fontSize: "14px", fontWeight: 600, color: "#cbd5e1" }}>
-                Test Questions to Generate:
+                Target Document:
+              </label>
+              <select
+                value={syntheticTargetDocument || (targetDocument !== "all" ? targetDocument : (indexedDocs[0]?.source || ""))}
+                onChange={(e) => setSyntheticTargetDocument(e.target.value)}
+                className="modern-select"
+                style={{ maxWidth: "260px" }}>
+                {indexedDocs.length === 0 && <option value="">No indexed docs</option>}
+                {indexedDocs.map((doc, idx) => (
+                  <option key={idx} value={doc.source}>
+                    {doc.source} ({doc.chunk_count} chunks)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <label style={{ fontSize: "14px", fontWeight: 600, color: "#cbd5e1" }}>
+                Test Questions:
               </label>
               <select 
                 value={numQuestions} 
@@ -984,7 +1721,7 @@ function App() {
                   className="modern-select">
                   {savedDatasets.map((ds, idx) => (
                     <option key={idx} value={ds.filename}>
-                      {ds.filename} ({ds.num_questions} cases)
+                      {ds.filename} — [{ds.source_document}] ({ds.num_questions} cases)
                     </option>
                   ))}
                 </select>

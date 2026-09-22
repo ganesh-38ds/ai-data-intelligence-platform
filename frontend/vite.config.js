@@ -9,6 +9,14 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            if (res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(503, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ status: 'starting', message: 'Backend is starting up, please wait...' }))
+            }
+          })
+        }
       }
     }
   }

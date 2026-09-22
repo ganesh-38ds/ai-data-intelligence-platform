@@ -2,7 +2,7 @@ import os
 import json
 import time
 from dotenv import load_dotenv
-from google import genai
+import rag_engine
 
 load_dotenv()
 
@@ -62,14 +62,36 @@ def generate_synthetic_dataset(filename=None, num_questions=3):
       - context (ground truth source text)
       - expected_answer
     """
-    api_key = os.getenv("GEMINI_API_KEY")
+    if not isinstance(num_questions, int) or not 1 <= num_questions <= 100:
+        raise ValueError("num_questions must be an integer between 1 and 100")
 
-    # Find a markdown file to generate from
+    # Find and resolve the target markdown file
     available_files = [f for f in os.listdir(PROCESSED_DIR) if f.endswith(".md")]
     if not available_files:
         raise ValueError("No processed document found in data/processed/. Please upload a PDF or CSV first.")
 
-    target_file = filename if filename and filename in available_files else available_files[0]
+    target_file = None
+    if filename and filename != "all":
+        clean_name = os.path.basename(filename)
+        base_name = os.path.splitext(clean_name)[0]
+        # Check direct match, .md appended, or base name + .md
+        candidates = [clean_name, f"{clean_name}.md", f"{base_name}.md"]
+        for c in candidates:
+            if c in available_files:
+                target_file = c
+                break
+        if not target_file:
+            # Substring / partial match
+            for af in available_files:
+                if base_name.lower() in af.lower() or af.lower() in base_name.lower():
+                    target_file = af
+                    break
+
+    if not target_file:
+        # Default to the most recently modified markdown file
+        sorted_by_mtime = sorted(available_files, key=lambda x: os.path.getmtime(os.path.join(PROCESSED_DIR, x)), reverse=True)
+        target_file = sorted_by_mtime[0]
+
     file_path = os.path.join(PROCESSED_DIR, target_file)
 
     with open(file_path, "r", encoding="utf-8") as f:
@@ -90,34 +112,45 @@ def generate_synthetic_dataset(filename=None, num_questions=3):
 
     test_cases = None
 
+    api_key = os.getenv("GEMINI_API_KEY")
     if api_key and api_key != "paste_your_key_here_without_quotes":
         try:
             from google.genai import types
-            client = genai.Client(api_key=api_key)
+            client = rag_engine._get_gemini_client()
 
             prompt = f"""
 You are an AI benchmark engineer building an evaluation dataset for a RAG system.
-Based on the following document excerpt, generate EXACTLY {num_questions} distinct question-answer test cases.
+Based on the following document excerpt from '{target_file}', generate EXACTLY {num_questions} distinct question-answer test cases.
 
+TARGET DOCUMENT: {target_file}
 DOCUMENT EXCERPT:
+\"\"\"
 {sample_context}
+\"\"\"
 
 RULES:
-1. Each test case MUST have:
+1. Every question MUST be answerable ONLY from the document excerpt above.
+2. Under NO circumstances should you generate questions about other datasets (e.g. sales data, orders, roadmaps, or other domains).
+3. Each test case MUST have:
    - "question": A realistic question a user would ask about this document.
    - "context": The exact sentence or paragraph from the document that answers the question.
    - "expected_answer": A clear, accurate, concise answer based strictly on that context.
-2. Return ONLY valid JSON as a list of objects with keys: "question", "context", "expected_answer".
-3. Do not include markdown code fence formatting (like ```json), return raw JSON only.
+4. Return ONLY valid JSON as a list of objects with keys: "question", "context", "expected_answer".
+5. Do not include markdown code fence formatting (like ```json), return raw JSON only.
 """
-            candidate_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.6-flash"]
+            candidate_models = [
+                os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
+                "gemini-3.6-flash",
+                "gemini-2.5-flash",
+                "gemini-3.5-flash-lite"
+            ]
             raw_text = ""
             for m in candidate_models:
                 try:
                     response = client.models.generate_content(
                         model=m,
                         contents=prompt,
-                        config=types.GenerateContentConfig(temperature=0.0)
+                        config=types.GenerateContentConfig(temperature=0.0),
                     )
                     if response and response.text:
                         raw_text = response.text.strip()
@@ -169,7 +202,7 @@ def list_evaluation_datasets():
     """Lists all saved synthetic datasets in data/evaluation."""
     if not os.path.exists(EVAL_DIR):
         return []
-    files = [f for f in os.listdir(EVAL_DIR) if f.endswith(".json")]
+    files = [f for f in os.listdir(EVAL_DIR) if f.startswith("synthetic_qa_") and f.endswith(".json")]
     datasets = []
     for f in sorted(files, reverse=True):
         fpath = os.path.join(EVAL_DIR, f)

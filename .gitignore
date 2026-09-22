@@ -26,3 +26,11 @@ data/chroma_db/
 Thumbs.db
 desktop.ini
 .vscode/
+
+# User Data & Evaluations
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/evaluation/*
+!data/evaluation/.gitkeep

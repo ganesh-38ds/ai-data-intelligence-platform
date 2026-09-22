@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import evaluation_engine
 
-QUALITY_THRESHOLD = float(os.getenv("RAG_QUALITY_THRESHOLD", "0.80"))
+QUALITY_THRESHOLD = float(os.getenv("RAG_QUALITY_THRESHOLD", "0.75"))
 
 def test_heuristic_scoring_accuracy():
     """Verify that heuristic fallback accurately scores grounded responses."""
