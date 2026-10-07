@@ -65,17 +65,14 @@ function App() {
 
   // ---------------- Document Content Inspection State ----------------
   const [viewingDocContent, setViewingDocContent] = useState(null)
-  const [isLoadingContent, setIsLoadingContent] = useState(false)
 
   const handleViewDocContent = async (filename) => {
-    setIsLoadingContent(true)
     try {
       const res = await axios.get(`${API_BASE}/api/documents/content/${encodeURIComponent(filename)}`)
       setViewingDocContent(res.data)
     } catch (err) {
       alert("Failed to load document content: " + getErrorMessage(err))
     }
-    setIsLoadingContent(false)
   }
 
   const handleAskQuickQuestion = (q, docScope) => {
@@ -194,7 +191,10 @@ function App() {
           try {
             const dRes = await axios.get(`${API_BASE}/api/dataset/${res.data[0].filename}`)
             setGeneratedDataset(dRes.data)
-          } catch {}
+          } catch {
+            // dataset preview is optional on initial load
+            void 0
+          }
         }
       }
     } catch (err) {
@@ -298,6 +298,7 @@ function App() {
       mounted = false
       clearInterval(pollInterval)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFileChange = (e) => {
